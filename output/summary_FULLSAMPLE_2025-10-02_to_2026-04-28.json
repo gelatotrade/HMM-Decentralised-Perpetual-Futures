@@ -1,0 +1,65 @@
+{
+  "_ARCHIVED_NOTE": "Full-sample (T=5001, 2 Oct 2025 - 28 Apr 2026) results, preserved verbatim. return_K3 is the paper's headline K=3 return fit; its arrays are in mu-ascending state order, so index 0 is the high-volatility state. funding_MSAR is the inferior of the two optima of the MS-AR likelihood (half-lives 42.87 h and 1.75 h); the paper's funding estimates are in output/diagnostics.json. NOT regenerable: the full-window hourly panel is not part of this package and cannot be re-fetched. output/summary.json is the regenerable Dec 2025 - Apr 2026 sub-sample result. Do not overwrite this file.",
+  "n_obs": 5001,
+  "start": "2025-10-02 00:00:00+00:00",
+  "end": "2026-04-28 08:00:00+00:00",
+  "price_range_usd": [
+    62883.0,
+    126101.0
+  ],
+  "funding_mean_bps_per_hour": 0.05925937212557489,
+  "funding_std_bps_per_hour": 0.10275164989038421,
+  "funding_annualised_pct": 5.19112099820036,
+  "return_K3": {
+    "mu_bps_per_hour": [
+      -5.6853307305195555,
+      0.1386344297293284,
+      0.40368618297609804
+    ],
+    "sigma_bps_per_hour": [
+      94.41669160933074,
+      15.551496841750101,
+      35.56571359115809
+    ],
+    "annualised_vol_pct": [
+      88.36918133206557,
+      14.555403509371079,
+      33.287683988609054
+    ],
+    "diag_A": [
+      0.7307099355412499,
+      0.9235270781962212,
+      0.8866550724800276
+    ],
+    "expected_duration_hours": [
+      3.7134678622841655,
+      13.07652403508121,
+      8.822626842509482
+    ],
+    "stationary": [
+      0.20043223783595573,
+      0.203732333480553,
+      0.5958354286834914
+    ],
+    "logL": 20270.19250542099,
+    "BIC": -40421.141506442116
+  },
+  "funding_MSAR": {
+    "mu_const": [
+      -2.2394073206893914,
+      -0.8897708715166103
+    ],
+    "phi": [
+      0.9839611690205514,
+      0.6723483288140442
+    ],
+    "sigma2": [
+      0.29085745941895025,
+      8.071919836007465
+    ],
+    "half_life_hours": [
+      42.86930679784534,
+      1.7460562358398022
+    ]
+  }
+}

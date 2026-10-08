@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets — never commit AWS or API credentials
+.env
+*.pem
+credentials
+
+# Data
+#
+# data/raw/ holds optional raw pulls (fetch_official --source s3); no result in
+# the paper needs them.
+data/raw/
+*.lz4
+data/processed/*.parquet
+#
+# data/interim/ is otherwise ignored, BUT premium_BTC_full.csv is tracked on
+# purpose: it is the funding/premium series the paper is estimated on. A later
+# fetch returns a longer file whose shared rows equal this one; tracking the
+# file pins the exact input. See README, "What ships".
+#
+# The 2-hourly price files are tracked for the same reason and one stronger.
+# candleSnapshot's cap is on RECORD COUNT per interval, so its reach is
+# 5000 x interval and the 2h window slides forward one day per day: 2 Oct 2025
+# leaves it on 22 Nov 2026, after which these files are NOT regenerable at this
+# resolution (4h remains until 2028-01-13). They are the only price data
+# covering Oct-Nov 2025. See README, "Data sources".
+data/interim/*
+!data/interim/.gitkeep
+!data/interim/premium_BTC_full.csv
+!data/interim/prices_BTC_2h_full.csv
+!data/interim/prices_BTC_2h_20251002_20251202.csv
+!data/interim/prices_BTC_1h_tardis_samples.csv
+#
+# Binance and Bybit BTCUSDT funding and hourly premium index for the
+# cross-venue censoring comparison: small, and tracked for the same reason
+# as the premium series (later fetches return a longer history).
+!data/interim/binance_BTCUSDT_funding.csv
+!data/interim/binance_BTCUSDT_premium_1h.csv
+!data/interim/bybit_BTCUSDT_funding.csv
+!data/interim/bybit_BTCUSDT_premium_1h.csv
+
+# Fit cache — regenerable pickles keyed on the panel content hash
+output/cache/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.synctex.gz
+paper/*.toc
+
+# Local working files are not part of the package; README.md is the
+# documentation.
+*.md
+!README.md
+archive/
+docs/

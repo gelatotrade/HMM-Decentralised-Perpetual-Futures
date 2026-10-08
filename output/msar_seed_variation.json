@@ -1,0 +1,152 @@
+{
+ "_note": "MS-AR(1) on the paper-window premium (T = 5,001), the paper's protocol repeated on six disjoint blocks of 40 consecutive seeds. Records how many starts reach each optimum. Backs the seed sentence of Section 5.3.",
+ "protocol": {
+  "n_starts": 40,
+  "search_reps": 40,
+  "n_blocks": 6
+ },
+ "T": 5001,
+ "runs": [
+  {
+   "seed_base": 20260802,
+   "seeds": [
+    20260802,
+    20260841
+   ],
+   "optima_found": [
+    {
+     "llf": -4828.67,
+     "count": 24
+    },
+    {
+     "llf": -4808.53,
+     "count": 16
+    }
+   ],
+   "failures": 0,
+   "best_llf": -4808.53,
+   "best_seed": 20260817,
+   "modal_is_best": false
+  },
+  {
+   "seed_base": 20260842,
+   "seeds": [
+    20260842,
+    20260881
+   ],
+   "optima_found": [
+    {
+     "llf": -4828.67,
+     "count": 25
+    },
+    {
+     "llf": -4808.53,
+     "count": 15
+    }
+   ],
+   "failures": 0,
+   "best_llf": -4808.53,
+   "best_seed": 20260871,
+   "modal_is_best": false
+  },
+  {
+   "seed_base": 20260882,
+   "seeds": [
+    20260882,
+    20260921
+   ],
+   "optima_found": [
+    {
+     "llf": -4828.67,
+     "count": 24
+    },
+    {
+     "llf": -4808.53,
+     "count": 16
+    }
+   ],
+   "failures": 0,
+   "best_llf": -4808.53,
+   "best_seed": 20260906,
+   "modal_is_best": false
+  },
+  {
+   "seed_base": 20260922,
+   "seeds": [
+    20260922,
+    20260961
+   ],
+   "optima_found": [
+    {
+     "llf": -4828.67,
+     "count": 20
+    },
+    {
+     "llf": -4808.53,
+     "count": 20
+    }
+   ],
+   "failures": 0,
+   "best_llf": -4808.53,
+   "best_seed": 20260945,
+   "modal_is_best": false
+  },
+  {
+   "seed_base": 20260962,
+   "seeds": [
+    20260962,
+    20261001
+   ],
+   "optima_found": [
+    {
+     "llf": -4828.67,
+     "count": 25
+    },
+    {
+     "llf": -4808.53,
+     "count": 15
+    }
+   ],
+   "failures": 0,
+   "best_llf": -4808.53,
+   "best_seed": 20260988,
+   "modal_is_best": false
+  },
+  {
+   "seed_base": 20261002,
+   "seeds": [
+    20261002,
+    20261041
+   ],
+   "optima_found": [
+    {
+     "llf": -4828.67,
+     "count": 30
+    },
+    {
+     "llf": -4808.53,
+     "count": 10
+    }
+   ],
+   "failures": 0,
+   "best_llf": -4808.53,
+   "best_seed": 20261033,
+   "modal_is_best": false
+  }
+ ],
+ "starts_at_inferior_optimum": {
+  "min": 20,
+  "max": 30,
+  "per_block": [
+   24,
+   25,
+   24,
+   20,
+   25,
+   30
+  ]
+ },
+ "best_llf_every_block": [
+  -4808.53
+ ]
+}

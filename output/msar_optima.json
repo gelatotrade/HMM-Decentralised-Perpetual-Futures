@@ -1,0 +1,22 @@
+{
+ "_note": "Half-lives and their ratio at each optimum of the MS-AR(1) likelihood on the paper-window premium (T = 5,001), from single starts of the first seed block of msar_seed_variation.json. Regimes ordered by sigma2.",
+ "T": 5001,
+ "search_reps": 40,
+ "optima": [
+  {
+   "llf": -4808.53,
+   "first_seed": 20260806,
+   "tau_calm": 35.5517519211448,
+   "tau_stressed": 3.1779513494797595,
+   "ratio": 11.187003201595497
+  },
+  {
+   "llf": -4828.67,
+   "first_seed": 20260802,
+   "tau_calm": 42.894070030916865,
+   "tau_stressed": 1.7436839274570322,
+   "ratio": 24.599681946643315
+  }
+ ],
+ "logL_gap": 20.14
+}

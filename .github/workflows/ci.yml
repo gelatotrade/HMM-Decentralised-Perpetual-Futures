@@ -1,0 +1,71 @@
+name: ci
+
+# Everything here is offline. No job touches the Hyperliquid API: the network
+# acceptance test (`fetch_official --validate`) is documented in the README and
+# run by hand, because CI must not go red when an exchange endpoint is slow.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Install ruff at the pinned version
+        run: python -m pip install "ruff==0.15.21"
+      - name: ruff
+        run: ruff check src/ tests/ scripts/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"          # the only interpreter this is tested on
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Record the environment
+        run: python -c "import numpy,scipy,pandas,statsmodels,matplotlib,sys;print(sys.version);print('numpy',numpy.__version__);print('scipy',scipy.__version__);print('pandas',pandas.__version__);print('statsmodels',statsmodels.__version__);print('matplotlib',matplotlib.__version__)"
+
+      - name: Unit tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest tests/ -q
+
+      - name: Offline self-test of the recovery module
+        env:
+          PYTHONPATH: src
+        run: python -m regime_engine.fetch_official --self-test
+
+      # Smoke test, not a bit-exactness gate. The archived outputs were produced
+      # on macOS/arm64; a Linux/x86-64 BLAS will not reproduce them to the last
+      # bit, so this asserts the pipeline runs end to end and leaves correctness
+      # to the unit tests above.
+      - name: Fit both models on the shipped panel
+        env:
+          PYTHONPATH: src
+          MPLBACKEND: Agg
+        run: |
+          python -m regime_engine.analysis \
+            --panel data/processed/panel_BTC_subsample.csv --out /tmp/ci-out
+          python -m regime_engine.robustness \
+            --panel data/processed/panel_BTC_subsample.csv --out /tmp/ci-out
+          test -s /tmp/ci-out/summary.json

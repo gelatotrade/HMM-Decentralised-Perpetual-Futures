@@ -1,0 +1,89 @@
+{
+ "_note": "Information criteria for K in {2,3,4,5} on the reproducible sub-sample panel, raw log-returns. All four converge from 40 starts and K=4 attains the best BIC; the paper retains K=3 on the grounds given in Section 4.3, not on BIC alone.",
+ "panel": "data/processed/panel_BTC_subsample.csv",
+ "T": 3507,
+ "protocol": {
+  "n_starts": 40,
+  "ks": [
+   2,
+   3,
+   4,
+   5
+  ]
+ },
+ "records": [
+  {
+   "K": 2,
+   "logL": 14206.979420831261,
+   "n_params": 7,
+   "AIC": -28399.958841662523,
+   "BIC": -28356.821227911543,
+   "sigma_bps_per_hour": [
+    23.908038445664754,
+    77.95615497626177
+   ],
+   "seed": 47,
+   "delta_BIC": 0.0
+  },
+  {
+   "K": 3,
+   "logL": 14323.843658286702,
+   "n_params": 14,
+   "AIC": -28619.687316573403,
+   "BIC": -28533.41208907144,
+   "sigma_bps_per_hour": [
+    13.726387846342664,
+    33.09984595307097,
+    93.65536662575407
+   ],
+   "seed": 48,
+   "delta_BIC": -176.59086115989703
+  },
+  {
+   "K": 4,
+   "logL": 14372.36562877345,
+   "n_params": 23,
+   "AIC": -28698.7312575469,
+   "BIC": -28556.993383793677,
+   "sigma_bps_per_hour": [
+    11.098175992609068,
+    24.81358939038982,
+    55.766670925103604,
+    134.86213789165583
+   ],
+   "seed": 49,
+   "delta_BIC": -200.17215588213367
+  },
+  {
+   "K": 5,
+   "logL": 14379.86716393227,
+   "n_params": 34,
+   "AIC": -28691.73432786454,
+   "BIC": -28482.208775359773,
+   "sigma_bps_per_hour": [
+    10.664090834968162,
+    20.57345233831012,
+    33.55208328846301,
+    66.95864726686972,
+    145.79080706557247
+   ],
+   "seed": 50,
+   "delta_BIC": -125.38754744823018
+  }
+ ],
+ "preferred_by_bic": 4,
+ "previous_k2_k3_from_summary_json": {
+  "2": {
+   "logL": 14206.97942075477,
+   "n_params": 7,
+   "AIC": -28399.95884150954,
+   "BIC": -28356.82122775856
+  },
+  "3": {
+   "logL": 14323.84356343513,
+   "n_params": 14,
+   "AIC": -28619.68712687026,
+   "BIC": -28533.411899368297
+  }
+ }
+}

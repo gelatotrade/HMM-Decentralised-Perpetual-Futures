@@ -1,0 +1,152 @@
+{
+  "generated_by": "regime_engine.diagnostics.run_benchmarks",
+  "panel": "data/processed/panel_BTC_subsample.csv",
+  "T": 3507,
+  "units": "Every log-likelihood is evaluated on the RAW hourly log-return series, never on returns in basis points. A log-likelihood is not scale-free: logL(c r) = logL(r) - T log c, which at c = 1e4 and T = 3507 is 32,300.7 nats -- three orders of magnitude larger than any model difference in this table. Mixing units across rows would decide the ranking by itself.",
+  "log_scale_gap_nats": 32300.663684520478,
+  "convention": "AIC = 2k - 2 logL and BIC = k log T - 2 logL for every row, lower is better. GaussianHMM.aic/.bic use the same convention, so the sign convention matches the model-selection table (table1_model_selection.tex).",
+  "likelihood_conditioning": "Every row evaluates all T = 3507 observations. The GARCH recursion is initialised at the sample variance -- a fixed backcast, not an estimated parameter -- so no row conditions on a different number of observations than another.",
+  "parameter_count_note": "The HMM rows follow the paper's count |theta_K| = K(K-1) + 2K + (K-1), which treats the initial distribution as K-1 free parameters. The GARCH rows have no analogous term. `BIC_without_initial_distribution` gives the most HMM-favourable alternative count; it is a lower bound on the BIC of a properly stationary-initialised HMM, because constraining pi to the stationary distribution can only lower the log-likelihood.",
+  "arch_package_available": true,
+  "garch_implementation": "self-contained scipy MLE in this module (arch is not a dependency of this package). Cross-checked against arch 7.2.0 in tests/test_diagnostics.py::test_garch_matches_the_arch_package_when_it_is_installed, which skips when arch is absent.",
+  "rows": [
+    {
+      "model": "GARCH(1,1)-Student-t",
+      "params": {
+        "mu": -2.0674301159156924e-05,
+        "omega": 1.48571489478638e-06,
+        "alpha": 0.2759205181992697,
+        "beta": 0.7240598927605716,
+        "nu": 3.350270776539824
+      },
+      "persistence": 0.9999804109598414,
+      "logL": 14312.115750620509,
+      "logL_in_bps_units": -17988.54793389996,
+      "jacobian_check_gap": -7.275957614183426e-12,
+      "mean_conditional_vol_annualised_pct": 46.82149408413804,
+      "k": 5,
+      "T": 3507,
+      "converged": true,
+      "AIC": -28614.231501241018,
+      "BIC": -28583.418919990316,
+      "caveat": "alpha + beta sits at the 0.99999 bound imposed in estimation: the process is near-integrated, its unconditional variance barely finite, and `implied_annualised_vol_pct` is not interpretable.",
+      "caveat_tails": "nu = 3.35 < 4, so the fitted innovation distribution has infinite kurtosis; the model wins on likelihood by allowing tails the Gaussian mixture cannot reach, not by describing the regime structure better."
+    },
+    {
+      "model": "Gaussian HMM, K=3",
+      "params": {
+        "mu_bps_per_hour": [
+          -0.10977347363488292,
+          -0.22292460832756908,
+          -1.8832903534390868
+        ],
+        "sigma_bps_per_hour": [
+          13.735191830320346,
+          33.114786984832875,
+          93.68452454584627
+        ],
+        "diag_A": [
+          0.9299682399480167,
+          0.8868244044522046,
+          0.7350117262989653
+        ]
+      },
+      "logL": 14323.84356343513,
+      "k": 14,
+      "T": 3507,
+      "seed": 45,
+      "AIC": -28619.68712687026,
+      "BIC": -28533.411899368297,
+      "k_without_initial_distribution": 12,
+      "BIC_without_initial_distribution": -28549.736931868578
+    },
+    {
+      "model": "Gaussian HMM, K=2",
+      "params": {
+        "mu_bps_per_hour": [
+          -0.42281919277710833,
+          -0.786758294503984
+        ],
+        "sigma_bps_per_hour": [
+          23.908114476529825,
+          77.9562883894046
+        ],
+        "diag_A": [
+          0.9105825443916329,
+          0.8418745248592192
+        ]
+      },
+      "logL": 14206.97942075477,
+      "k": 7,
+      "T": 3507,
+      "seed": 44,
+      "AIC": -28399.95884150954,
+      "BIC": -28356.82122775856,
+      "k_without_initial_distribution": 6,
+      "BIC_without_initial_distribution": -28364.983744008696
+    },
+    {
+      "model": "GARCH(1,1)-Normal",
+      "params": {
+        "mu": -6.375022594209669e-05,
+        "omega": 4.056438944518677e-06,
+        "alpha": 0.23589497384909847,
+        "beta": 0.6268160453076514
+      },
+      "persistence": 0.86271101915675,
+      "implied_annualised_vol_pct": 50.87526499259588,
+      "logL": 13867.331343976837,
+      "logL_in_bps_units": -18433.332340543635,
+      "jacobian_check_gap": -5.4569682106375694e-12,
+      "mean_conditional_vol_annualised_pct": 45.60105994252838,
+      "k": 4,
+      "T": 3507,
+      "converged": true,
+      "AIC": -27726.662687953674,
+      "BIC": -27702.012622953112
+    },
+    {
+      "model": "Gaussian i.i.d.",
+      "params": {
+        "mu": -5.5422231186182535e-05,
+        "sigma": 0.005059114459666231
+      },
+      "logL": 13563.76187717741,
+      "k": 2,
+      "T": 3507,
+      "AIC": -27123.52375435482,
+      "BIC": -27111.19872185454
+    }
+  ],
+  "ranking_by_BIC": [
+    "GARCH(1,1)-Student-t",
+    "Gaussian HMM, K=3",
+    "Gaussian HMM, K=2",
+    "GARCH(1,1)-Normal",
+    "Gaussian i.i.d."
+  ],
+  "ranking_by_AIC": [
+    "Gaussian HMM, K=3",
+    "GARCH(1,1)-Student-t",
+    "Gaussian HMM, K=2",
+    "GARCH(1,1)-Normal",
+    "Gaussian i.i.d."
+  ],
+  "best_by_BIC": "GARCH(1,1)-Student-t",
+  "best_by_AIC": "Gaussian HMM, K=3",
+  "criteria_agree": false,
+  "headline": {
+    "hmm3_vs_single_gaussian_delta_BIC": -1422.2131775137568,
+    "hmm3_vs_garch_normal_delta_BIC": -831.3992764151844,
+    "hmm3_vs_garch_t_delta_BIC": 50.0070206220189,
+    "hmm3_vs_garch_t_delta_AIC": -5.455625629241695,
+    "statement": "The K=3 Gaussian HMM beats the single Gaussian by 1,422 BIC points and the Gaussian GARCH(1,1) by 831. It LOSES to the Student-t GARCH(1,1) on BIC by 50.0 points while WINNING on AIC by 5.5: the two criteria disagree because they price the HMM's nine extra parameters differently."
+  },
+  "software": {
+    "python": "3.9.6",
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "statsmodels": "0.14.6",
+    "arch": "7.2.0"
+  }
+}

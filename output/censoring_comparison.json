@@ -1,0 +1,189 @@
+{
+ "_note": "Funding settlements exactly at the interest floor (0.01% per 8h; 0.125 bps/h on Hyperliquid), compared as decimals, per venue and window. Premium: Hyperliquid's hourly average premium; for Binance and Bybit, the premium each settlement identifies outside the band (F - 0.05% below it), with in-band settlements treated as censored; premium_index_8h_means is an approximation from the hourly premium index. Band: (-4, +6) bps.",
+ "floors": {
+  "8h": "0.0001",
+  "hourly": "0.0000125"
+ },
+ "band_bps": [
+  -4.0,
+  6.0
+ ],
+ "windows": {
+  "paper": [
+   "2025-10-02 00:00",
+   "2026-04-28 08:00"
+  ],
+  "later": [
+   "2026-04-28 08:00",
+   "2026-10-01 00:00"
+  ]
+ },
+ "venues": {
+  "hyperliquid": {
+   "settles": "hourly",
+   "paper": {
+    "n": 5001,
+    "at_floor": 2300,
+    "below": 2624,
+    "above": 77,
+    "share_at_floor": 0.45990801839632073,
+    "share_below": 0.5246950609878024,
+    "share_above": 0.015396920615876825,
+    "premium": {
+     "source": "hourly average premium",
+     "n": 5001,
+     "mean_bps": -3.147750097980404,
+     "sd_bps": 2.867287670433888,
+     "share_in_band": 0.45990801839632073,
+     "q25_bps": -4.92819,
+     "median_bps": -4.11083,
+     "q75_bps": -2.257435
+    }
+   },
+   "later": {
+    "n": 3736,
+    "at_floor": 1931,
+    "below": 1750,
+    "above": 55,
+    "share_at_floor": 0.5168629550321199,
+    "share_below": 0.4684154175588865,
+    "share_above": 0.014721627408993576,
+    "premium": {
+     "source": "hourly average premium",
+     "n": 3736,
+     "mean_bps": -3.115685496788008,
+     "sd_bps": 2.5124467427283244,
+     "share_in_band": 0.5168629550321199,
+     "q25_bps": -4.67226225,
+     "median_bps": -3.9008290000000003,
+     "q75_bps": -2.35239925
+    }
+   }
+  },
+  "hyperliquid_at_8h_stamps": {
+   "settles": "hourly, read at 00/08/16 UTC",
+   "paper": {
+    "n": 626,
+    "at_floor": 303,
+    "below": 313,
+    "above": 10,
+    "share_at_floor": 0.4840255591054313,
+    "share_below": 0.5,
+    "share_above": 0.01597444089456869
+   },
+   "later": {
+    "n": 467,
+    "at_floor": 246,
+    "below": 213,
+    "above": 8,
+    "share_at_floor": 0.5267665952890792,
+    "share_below": 0.45610278372591007,
+    "share_above": 0.017130620985010708
+   }
+  },
+  "binance": {
+   "settles": "8-hourly",
+   "spacing_hours": [
+    8
+   ],
+   "paper": {
+    "n": 626,
+    "at_floor": 37,
+    "below": 589,
+    "above": 0,
+    "share_at_floor": 0.05910543130990415,
+    "share_below": 0.9408945686900958,
+    "share_above": 0.0,
+    "premium": {
+     "source": "settlements",
+     "n": 626,
+     "identified": 589,
+     "q25_bps": -5.098675,
+     "median_bps": -4.7469,
+     "q75_bps": -4.437175
+    },
+    "premium_index_8h_means": {
+     "n": 626,
+     "mean_bps": -4.74684748402556,
+     "sd_bps": 0.6800223052971569,
+     "share_in_band": 0.134185303514377
+    }
+   },
+   "later": {
+    "n": 467,
+    "at_floor": 51,
+    "below": 416,
+    "above": 0,
+    "share_at_floor": 0.10920770877944326,
+    "share_below": 0.8907922912205567,
+    "share_above": 0.0,
+    "premium": {
+     "source": "settlements",
+     "n": 467,
+     "identified": 416,
+     "q25_bps": -4.809049999999999,
+     "median_bps": -4.5088,
+     "q75_bps": -4.27675
+    },
+    "premium_index_8h_means": {
+     "n": 467,
+     "mean_bps": -4.446787178800856,
+     "sd_bps": 0.8216542319677046,
+     "share_in_band": 0.17130620985010706
+    }
+   }
+  },
+  "bybit": {
+   "settles": "8-hourly",
+   "spacing_hours": [
+    8
+   ],
+   "paper": {
+    "n": 626,
+    "at_floor": 48,
+    "below": 578,
+    "above": 0,
+    "share_at_floor": 0.07667731629392971,
+    "share_below": 0.9233226837060703,
+    "share_above": 0.0,
+    "premium": {
+     "source": "settlements",
+     "n": 626,
+     "identified": 578,
+     "q25_bps": -5.09105,
+     "median_bps": -4.81845,
+     "q75_bps": -4.489
+    },
+    "premium_index_8h_means": {
+     "n": 626,
+     "mean_bps": -4.746351976837061,
+     "sd_bps": 0.5920448657009331,
+     "share_in_band": 0.10383386581469649
+    }
+   },
+   "later": {
+    "n": 467,
+    "at_floor": 37,
+    "below": 430,
+    "above": 0,
+    "share_at_floor": 0.07922912205567452,
+    "share_below": 0.9207708779443254,
+    "share_above": 0.0,
+    "premium": {
+     "source": "settlements",
+     "n": 467,
+     "identified": 430,
+     "q25_bps": -4.92605,
+     "median_bps": -4.678,
+     "q75_bps": -4.403449999999999
+    },
+    "premium_index_8h_means": {
+     "n": 467,
+     "mean_bps": -4.59917743576017,
+     "sd_bps": 0.6898456174384455,
+     "share_in_band": 0.1006423982869379
+    }
+   }
+  }
+ }
+}

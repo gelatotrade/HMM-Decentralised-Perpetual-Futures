@@ -1,0 +1,18 @@
+% Manuscript copy. Window: 2 Oct 2025 -- 28 Apr 2026 (T = 5,001) -- the FULL
+% sample, which no longer exists at hourly resolution and cannot be refitted.
+% Source: the K=3 row is output/summary_FULLSAMPLE_2025-10-02_to_2026-04-28.json
+% (return_K3.logL / .BIC). The K=2 row was not archived and cannot be refitted,
+% because the full-sample hourly returns are no longer served; it survives only
+% here and in the PDF. The corresponding sub-sample comparison, which is
+% reproducible, is in output/summary.json under model_selection
+% (delta BIC -176.59).
+% output/tables/table1_model_selection.tex carries the SAME FILENAME but the
+% T = 3,507 sub-sample fit. Do not overwrite this file with it.
+\begin{tabular}{lrrrr}
+\toprule
+$K$ & $\log\mathcal{L}$ & \# params & AIC & BIC \\
+\midrule
+2 & 20,132.0 & 7 & $-$40,250.0 & $-$40,204.4 \\
+3 & 20,270.2 & 14 & $-$40,512.4 & $-$40,421.1 \\
+\bottomrule
+\end{tabular}

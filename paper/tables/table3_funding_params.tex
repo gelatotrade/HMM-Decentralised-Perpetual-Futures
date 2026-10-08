@@ -1,0 +1,21 @@
+% Manuscript copy. Window: 2 Oct 2025 -- 28 Apr 2026 (T_eff = 5,000), NOT the
+% shipped sub-sample. Source of every number:
+%   output/diagnostics.json -> tests[] -> msar block whose window is
+%   "paper window 2 Oct 2025 - 28 Apr 2026 (T=5,001)".
+% The numbers come from `make diagnostics` (output/diagnostics.json); this file
+% is maintained by hand, and tests/test_paper_window_msar.py pins the agreement.
+% Do NOT overwrite it with output/tables/table3_funding_params.tex, which is the
+% sub-sample fit under the same name.
+\begin{tabular}{lrrrrr}
+\toprule
+Regime & $\hat\mu_k$ (bps) & $\hat\phi_k$ & $\hat\sigma_k$ (bps) & Half-life (h) & 95\% CI \\
+\midrule
+1 (calm)     & $-2.78$ & 0.9807 & 0.525 & 35.6 & $[22.2,\ 48.9]$ \\
+             &         & (0.0037) &     &      &                 \\
+2 (stressed) & $-3.22$ & 0.8040 & 2.681 & 3.2  & $[1.5,\ 4.8]$   \\
+             &         & (0.0462) &     &      &                 \\
+\midrule
+\multicolumn{6}{l}{\footnotesize Ratio $\hat\tau_1/\hat\tau_2 = 11.2$ (s.e.\ 4.2; 95\% CI $[3.0,\ 19.4]$, delta method on the full covariance)} \\
+\multicolumn{6}{l}{\footnotesize $\log\mathcal{L} = -4808.53$, AIC $= 9633.1$, BIC $= 9685.2$, $T_{\text{eff}} = 5{,}000$} \\
+\bottomrule
+\end{tabular}

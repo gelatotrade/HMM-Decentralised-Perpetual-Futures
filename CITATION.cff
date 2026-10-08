@@ -1,0 +1,63 @@
+cff-version: 1.2.0
+message: >-
+  If you use this replication package, please cite the paper it accompanies
+  (see preferred-citation below). Cite the software itself only if you use the
+  estimation code independently of the paper.
+
+title: "HMM-Decentralised-Perpetual-Futures: replication package for Same Formula, Different Signal"
+abstract: >-
+  Code, data and fitted parameters for a comparison of funding-rate censoring
+  on the Hyperliquid, Binance and Bybit BTC perpetuals, a Gaussian hidden Markov
+  model (K=3) on hourly Hyperliquid BTC perpetual log-returns and a
+  Markov-switching AR(1) on the funding premium, including the multi-start
+  protocol required to reach the maximum of the multi-modal MS-AR likelihood.
+type: software
+license: MIT
+repository-code: "https://github.com/gelatotrade/HMM-Decentralised-Perpetual-Futures"
+url: "https://github.com/gelatotrade/HMM-Decentralised-Perpetual-Futures"
+version: "1.2.0"
+date-released: "2026-10-08"
+keywords:
+  - regime switching
+  - hidden Markov models
+  - perpetual futures
+  - funding rates
+  - Hyperliquid
+  - cryptocurrency market microstructure
+  - Hamilton filter
+  - censoring
+  - Binance
+  - Bybit
+  - replication package
+
+authors:
+  - family-names: Albiez
+    given-names: Gregor
+    email: gregor.albiez@students.fhnw.ch
+    orcid: "https://orcid.org/0009-0006-6036-4932"
+    affiliation: >-
+      School of Business, University of Applied Sciences and Arts
+      Northwestern Switzerland (FHNW), Basel
+
+# The paper is not yet posted. When SSRN assigns its abstract id, add to
+# preferred-citation:
+#   url: "https://ssrn.com/abstract=<id>"
+#   doi: "10.2139/ssrn.<id>"
+# and change its type to article with journal "SSRN Electronic Journal".
+preferred-citation:
+  type: unpublished
+  title: >-
+    Same Formula, Different Signal: Funding-Rate Censoring and Regime Dynamics
+    in Decentralised Perpetual Futures
+  authors:
+    - family-names: Albiez
+      given-names: Gregor
+      email: gregor.albiez@students.fhnw.ch
+      orcid: "https://orcid.org/0009-0006-6036-4932"
+      affiliation: >-
+        School of Business, University of Applied Sciences and Arts
+        Northwestern Switzerland (FHNW), Basel
+  year: 2026
+  month: 10
+  notes: >-
+    Working paper, October 2026.

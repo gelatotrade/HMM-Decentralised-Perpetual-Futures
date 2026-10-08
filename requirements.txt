@@ -1,0 +1,48 @@
+# Pinned to the exact versions this repository was last run and tested on:
+#   CPython 3.9.6 (macOS system Python, Darwin 24.5.0, arm64)
+# Every number in output/summary.json and output/robustness.json was produced
+# with this set. Loosen a pin only after re-running `make test && make analyse`.
+#
+# statsmodels is the pin that matters most for reproducibility: the
+# Markov-switching start-parameter search has changed across 0.14.x point
+# releases, so an MS-AR result is not checkable without naming the version.
+# The version in force here is statsmodels 0.14.6.
+
+# Core numerics
+numpy==2.0.2
+scipy==1.13.1
+pandas==2.3.3
+
+# Models
+statsmodels==0.14.6      # MarkovAutoregression (MS-AR on premium) — see note above
+
+# Plotting
+matplotlib==3.9.4
+
+# Data IO — needed only for the network fetch paths; no result in the paper
+# depends on them.
+pyarrow==21.0.0          # parquet panels (optional; the shipped panels are CSV)
+requests==2.32.5         # Hyperliquid, Binance and Bybit REST endpoints
+boto3==1.42.97           # optional S3 cross-check in fetch_official (requester-pays bucket)
+lz4==4.4.5               # decompresses the optional S3 files (or use the lz4 CLI)
+
+# Dev / quality
+pytest==8.4.2
+ruff==0.15.21            # lint + format
+
+# Transitive versions actually installed on the interpreter that produced the
+# shipped outputs (CPython 3.9.6, macOS/arm64), read from importlib.metadata:
+#   patsy 1.0.2, python-dateutil 2.9.0.post0, pytz 2025.2, tzdata
+#   2025.2, packaging 25.0, pillow 11.3.0, fonttools 4.60.1, kiwisolver
+#   1.4.7, contourpy 1.3.0, cycler 0.12.1, pyparsing 3.2.5, six 1.15.0,
+#   urllib3 2.5.0, certifi 2025.11.12, charset-normalizer 3.4.4, idna
+#   3.11, iniconfig 2.1.0, pluggy 1.6.0, exceptiongroup 1.3.1, tomli
+#   2.4.1
+# boto3 and its dependencies (botocore, s3transfer, jmespath) are not needed for
+# any shipped result.
+#
+# Notes:
+#   - The AWS CLI (`aws s3 cp ... --request-payer requester`) is the simplest way
+#     to pull from requester-pays buckets; boto3 is the programmatic equivalent.
+#   - pyarrow is needed only to read or write parquet panels; the shipped
+#     panels are CSV.

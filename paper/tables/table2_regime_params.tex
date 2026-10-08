@@ -1,0 +1,19 @@
+% Manuscript copy. Window: 2 Oct 2025 -- 28 Apr 2026 (T = 5,001) -- the FULL
+% sample, not refittable: hourly candles before 3 Dec 2025 are no longer served.
+% Point estimates: output/summary_FULLSAMPLE_2025-10-02_to_2026-04-28.json,
+%   re-indexed to sigma ascending (that file stores mu-ascending arrays).
+% Parenthesised standard errors: output/bootstrap_hmm.json, sigma_ascending block.
+% output/tables/table2_regime_params.tex carries the SAME FILENAME but the
+% T = 3,507 sub-sample fit and no standard errors. Do not overwrite this file.
+\begin{tabular}{lrrrrr}
+\toprule
+State & $\hat\mu_k$ (bps/h) & $\hat\sigma_k$ (bps/h) & Annualised $\hat\sigma_k$ & $\hat A_{kk}$ & $\mathbb{E}[\tau_k]$ (h) \\
+\midrule
+1 low      & $0.139$  & $15.55$ & $14.6\%$ & $0.9235$ & $13.1$ \\
+           & $(0.62)$ & $(0.52)$ & $(0.49)$ & $(0.0120)$ & $(2.08)$ \\
+2 moderate & $0.404$  & $35.57$ & $33.3\%$ & $0.8867$ & $8.8$ \\
+           & $(0.78)$ & $(0.87)$ & $(0.82)$ & $(0.0114)$ & $(0.90)$ \\
+3 high     & $-5.685$ & $94.42$ & $88.4\%$ & $0.7307$ & $3.7$ \\
+           & $(3.28)$ & $(2.97)$ & $(2.78)$ & $(0.0303)$ & $(0.42)$ \\
+\bottomrule
+\end{tabular}
