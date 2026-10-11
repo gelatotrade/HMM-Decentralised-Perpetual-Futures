@@ -2,8 +2,60 @@
   "generated_by": "regime_engine.diagnostics.run_diagnostics",
   "panel": "data/processed/panel_BTC_subsample.csv",
   "T": 3507,
-  "hmm_K3_logL": 14323.84356343513,
-  "hmm_K3_logL_archived": 14323.84356343513,
+  "hmm_K3_logL": 14323.843669862033,
+  "hmm_K3_logL_archived": 14323.843669862033,
+  "hmm_K3_converged": true,
+  "hmm_K3_convergence": {
+    "protocol": "all starts to the tolerance rule; the first start with the largest final logL continued until |dlogL| < polish_tol and the largest parameter step < polish_step_tol",
+    "n_starts": 8,
+    "random_state": 45,
+    "iteration_cap": 100000,
+    "tol": 1e-06,
+    "selected_start": 1,
+    "per_start_iterations": [
+      219,
+      228,
+      227,
+      230,
+      216,
+      332,
+      178,
+      223
+    ],
+    "per_start_converged": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "per_start_final_dlogL": [
+      9.552859410177916e-07,
+      9.294799383496866e-07,
+      9.903487807605416e-07,
+      9.298364602727816e-07,
+      9.5946597866714e-07,
+      9.717077773530036e-07,
+      9.797240636544302e-07,
+      9.932973625836894e-07
+    ],
+    "all_starts_converged": true,
+    "n_starts_converged": 8,
+    "polish": {
+      "tol": 1e-09,
+      "step_tol": 1e-10,
+      "cap": 100000,
+      "iterations": 304,
+      "converged": true,
+      "final_dlogL": -1.8189894035458565e-12,
+      "final_max_param_step": 9.83700037314152e-11
+    },
+    "converged": true,
+    "logL": 14323.843669862033
+  },
   "standardisation": "z_t = (r_t - E[r_t|F_{t-1}]) / sqrt(Var[r_t|F_{t-1}]) with the one-step-ahead predicted regime distribution p~ = P(S_{t-1}|F_{t-1}) A; Var uses the full mixture variance, within-regime plus between-regime. FILTERED probabilities are the headline because a Ljung-Box statistic on a residual standardised by a two-sided (smoothed) posterior is not a test of forecast-error independence: the smoothed posterior conditions on r_t itself. The smoothed variant is reported alongside, for contrast, because it is the generous choice.",
   "tests": [
     {
@@ -95,173 +147,173 @@
     {
       "series": "HMM K=3 standardised residuals (filtered)",
       "n": 3506,
-      "mean": -0.007140959065875171,
-      "sd": 1.0177129193926566,
+      "mean": -0.0071396265002066535,
+      "sd": 1.0178054173476019,
       "ljung_box_z": [
         {
           "lag": 10,
-          "Q": 7.934111049994183,
-          "p": 0.6352729000710485
+          "Q": 7.929899237228309,
+          "p": 0.6356842644976162
         },
         {
           "lag": 24,
-          "Q": 18.251783601959804,
-          "p": 0.7906263399889035
+          "Q": 18.247528001506964,
+          "p": 0.7908383635984007
         }
       ],
       "ljung_box_z2": [
         {
           "lag": 10,
-          "Q": 2.3854434853367854,
-          "p": 0.9924420113080201
+          "Q": 2.3814774782653694,
+          "p": 0.992492624346921
         },
         {
           "lag": 24,
-          "Q": 5.714990467715207,
-          "p": 0.9999547079849437
+          "Q": 5.700466657794567,
+          "p": 0.9999557801219702
         }
       ],
       "ljung_box_abs_z": [
         {
           "lag": 10,
-          "Q": 20.594962633288308,
-          "p": 0.024101820677792856
+          "Q": 20.581018885644017,
+          "p": 0.02421219017352364
         },
         {
           "lag": 24,
-          "Q": 96.03021526581715,
-          "p": 1.415951324433615e-10
+          "Q": 95.95990292992605,
+          "p": 1.4551439625389337e-10
         }
       ],
       "ljung_box_log_z2": [
         {
           "lag": 10,
-          "Q": 33.311004466462855,
-          "p": 0.00024146526385735757
+          "Q": 33.217935282654075,
+          "p": 0.00025033889340091587
         },
         {
           "lag": 24,
-          "Q": 116.91985262291571,
-          "p": 3.4196229438162856e-14
+          "Q": 116.74920695153229,
+          "p": 3.666030233230983e-14
         }
       ],
       "arch_lm": {
         "lag": 12,
-        "LM": 2.3877250831165693,
-        "p": 0.9985377358665777,
-        "F": 0.19837232678149452,
-        "F_p": 0.9985519358546233
+        "LM": 2.3837862749160936,
+        "p": 0.9985497605499573,
+        "F": 0.1980448669769963,
+        "F_p": 0.9985638523122712
       },
       "arch_lm_trimmed5": {
         "lag": 12,
-        "LM": 26.610900613853712,
-        "p": 0.008787267656294635,
-        "F": 2.226292498200052,
-        "F_p": 0.008670202256702744
+        "LM": 26.637352836894507,
+        "p": 0.008711038116408505,
+        "F": 2.2285225412217424,
+        "F_p": 0.008594532944587289
       },
       "ljung_box_z2_trimmed5": [
         {
           "lag": 10,
-          "Q": 24.4479882820208,
-          "p": 0.006496064536366546
+          "Q": 24.462648889800846,
+          "p": 0.0064626543028417065
         },
         {
           "lag": 24,
-          "Q": 93.25338636245807,
-          "p": 4.144436263130335e-10
+          "Q": 93.28862421852831,
+          "p": 4.088567528159455e-10
         }
       ],
       "jarque_bera": {
-        "JB": 31100.582586610555,
+        "JB": 31193.989045143884,
         "p": 0.0,
-        "skew": -1.0195181338902293,
-        "excess_kurtosis": 14.447785434718313
+        "skew": -1.0210514636571935,
+        "excess_kurtosis": 14.469464185304059
       }
     },
     {
       "series": "HMM K=3 standardised residuals (smoothed)",
       "n": 3506,
-      "mean": 0.0002548675870338014,
-      "sd": 0.800386662520217,
+      "mean": 0.00026366092259209526,
+      "sd": 0.800442361693888,
       "ljung_box_z": [
         {
           "lag": 10,
-          "Q": 14.218886115719382,
-          "p": 0.16323962203277553
+          "Q": 14.204228540124962,
+          "p": 0.16387827841003458
         },
         {
           "lag": 24,
-          "Q": 28.240280406093405,
-          "p": 0.25003573162638865
+          "Q": 28.22732581084638,
+          "p": 0.2505684270069048
         }
       ],
       "ljung_box_z2": [
         {
           "lag": 10,
-          "Q": 53.25723378815265,
-          "p": 6.670130413847776e-08
+          "Q": 53.43548430239633,
+          "p": 6.180151859980281e-08
         },
         {
           "lag": 24,
-          "Q": 92.28935163357889,
-          "p": 6.004407352531929e-10
+          "Q": 92.50153985623841,
+          "p": 5.534445202830061e-10
         }
       ],
       "ljung_box_abs_z": [
         {
           "lag": 10,
-          "Q": 32.81203376609095,
-          "p": 0.0002929191134266419
+          "Q": 32.827731903298755,
+          "p": 0.0002911478277082748
         },
         {
           "lag": 24,
-          "Q": 78.36600539850477,
-          "p": 1.1055974579880247e-07
+          "Q": 78.40008878449073,
+          "p": 1.0919575669330013e-07
         }
       ],
       "ljung_box_log_z2": [
         {
           "lag": 10,
-          "Q": 30.024112392837306,
-          "p": 0.0008488960887548733
+          "Q": 29.837668620185873,
+          "p": 0.0009106033877142904
         },
         {
           "lag": 24,
-          "Q": 49.608430126264935,
-          "p": 0.0015875964388212193
+          "Q": 49.3021975906316,
+          "p": 0.0017354788094227842
         }
       ],
       "arch_lm": {
         "lag": 12,
-        "LM": 46.082475570445624,
-        "p": 6.714968193033459e-06,
-        "F": 3.877052750540599,
-        "F_p": 6.201690897387765e-06
+        "LM": 46.19664632216362,
+        "p": 6.41744680383454e-06,
+        "F": 3.8867869710896734,
+        "F_p": 5.923653778105346e-06
       },
       "arch_lm_trimmed5": {
         "lag": 12,
-        "LM": 32.50241931220176,
-        "p": 0.0011569576803132492,
-        "F": 2.7238171707021204,
-        "F_p": 0.0011253784680608535
+        "LM": 32.57201206181455,
+        "p": 0.0011285295570284677,
+        "F": 2.7297042477081757,
+        "F_p": 0.0010975087434108033
       },
       "ljung_box_z2_trimmed5": [
         {
           "lag": 10,
-          "Q": 27.00195090720633,
-          "p": 0.002602490140780435
+          "Q": 27.092437420123265,
+          "p": 0.002518058451612992
         },
         {
           "lag": 24,
-          "Q": 70.42721396936642,
-          "p": 1.8834883855084632e-06
+          "Q": 70.53756910418889,
+          "p": 1.812181322364605e-06
         }
       ],
       "jarque_bera": {
-        "JB": 12.715005805371144,
-        "p": 0.0017336905050484297,
-        "skew": -0.06461727540889886,
-        "excess_kurtosis": 0.26521280457459184
+        "JB": 12.894107188408679,
+        "p": 0.0015851858956564284,
+        "skew": -0.06477693402633071,
+        "excess_kurtosis": 0.2673597167214288
       }
     },
     {
@@ -503,8 +555,402 @@
           "best_seed": 20260829,
           "modal_llf": -2689.9,
           "modal_is_best": true,
+          "excluded": {
+            "non_finite_llf": 0,
+            "variance_floor": 0,
+            "singular_hessian": 0
+          },
+          "sigma2_floor": 3.246890234204462e-06,
           "refit_logL_gap": 0.0
-        }
+        },
+        "p_stay": [
+          0.940550020379848,
+          0.8662872166820069
+        ],
+        "expected_duration_hours": [
+          16.820863630052894,
+          7.478716508516765
+        ],
+        "stationary_share": [
+          0.6922285707872735,
+          0.30777142921272654
+        ],
+        "chain_eigenvalue": 0.8068372370618548,
+        "half_life_switching_hours": [
+          9,
+          13
+        ],
+        "half_life_switching_interp_hours": [
+          8.322879684546136,
+          12.068411433747793
+        ],
+        "ratio_switching": 0.6923076923076923,
+        "ratio_switching_interp": 0.6896416923003015,
+        "inference": {
+          "hessian": {
+            "phi_se": [
+              0.012667027478208451,
+              0.009995112755639928
+            ],
+            "phi_t_unit": [
+              -7.327490029523539,
+              -2.752878298180821
+            ],
+            "phi_ci95": [
+              [
+                0.8823555648012591,
+                0.9320094000981947
+              ],
+              [
+                0.9528946099846574,
+                0.9920747320295997
+              ]
+            ],
+            "half_life_ci95_from_phi": [
+              [
+                5.538081190164891,
+                9.844109746892878
+              ],
+              [
+                14.365456151747706,
+                87.11337611225025
+              ]
+            ],
+            "p_stay_se": [
+              0.01607007670419147,
+              0.03537108445749485
+            ],
+            "expected_duration_se": [
+              4.546890856697043,
+              1.9783472207538064
+            ],
+            "ratio_se": 0.11964949236242606,
+            "ratio_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  0.05191458572833027,
+                  0.5209319773260409
+                ],
+                "significance": "below"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  0.12630782709577862,
+                  0.6495107871548782
+                ],
+                "significance": "below"
+              },
+              "fieller": {
+                "shape": "bounded",
+                "bounds": [
+                  0.07496572935744138,
+                  0.5687821344867184
+                ],
+                "significance": "below"
+              }
+            },
+            "ratio_wald": {
+              "restriction": "phi_calm = phi_stressed",
+              "difference": -0.06530218855740166,
+              "se": 0.017439586092647504,
+              "z": -3.7444804142991064,
+              "p": 0.00018076747682268718,
+              "significance": "below"
+            },
+            "chain_eigenvalue_se": 0.04886938904253163,
+            "half_life_switching_interp_se": [
+              1.2645191085861496,
+              1.2622087762961745
+            ],
+            "ratio_switching_interp_se": 0.10589978021303781,
+            "ratio_switching_interp_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  0.48208193711203995,
+                  0.897201447488563
+                ],
+                "significance": "below"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  0.5104050613452821,
+                  0.9318200381972367
+                ],
+                "significance": "below"
+              }
+            },
+            "ratio_switching_side": "below",
+            "ratio_switching_sim": {
+              "draws": 50000,
+              "seed": 20261009,
+              "max_hours": 10000,
+              "transform": "logit",
+              "infinite": 0.0,
+              "undefined": 0.0,
+              "ci95": [
+                0.4858201768413178,
+                0.8784411230043135
+              ],
+              "ci95_hours": [
+                0.5,
+                0.9090909090909091
+              ]
+            }
+          },
+          "opg": {
+            "phi_se": [
+              0.006678598134608998,
+              0.007874337842611576
+            ],
+            "phi_t_unit": [
+              -13.897754540625188,
+              -3.494303844060851
+            ],
+            "phi_ci95": [
+              [
+                0.8940926706386768,
+                0.920272294260777
+              ],
+              [
+                0.957051252433509,
+                0.9879180895807481
+              ]
+            ],
+            "half_life_ci95_from_phi": [
+              [
+                6.191807699230004,
+                8.342558845967204
+              ],
+              [
+                15.78982897314341,
+                57.02338475845231
+              ]
+            ],
+            "p_stay_se": [
+              0.009566442206350957,
+              0.019180997481895848
+            ],
+            "expected_duration_se": [
+              2.70674306040074,
+              1.0728162181511463
+            ],
+            "ratio_se": 0.08885817001228678,
+            "ratio_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  0.11226446857096645,
+                  0.46058209448340476
+                ],
+                "significance": "below"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  0.15593258031538937,
+                  0.5261138886746484
+                ],
+                "significance": "below"
+              },
+              "fieller": {
+                "shape": "bounded",
+                "bounds": [
+                  0.12001509548197238,
+                  0.4727826174746134
+                ],
+                "significance": "below"
+              }
+            },
+            "ratio_wald": {
+              "restriction": "phi_calm = phi_stressed",
+              "difference": -0.06530218855740166,
+              "se": 0.011033709592332729,
+              "z": -5.918425531407845,
+              "p": 3.250381137209619e-09,
+              "significance": "below"
+            },
+            "chain_eigenvalue_se": 0.025886956144635372,
+            "half_life_switching_interp_se": [
+              0.6442891389382915,
+              1.0505079204256509
+            ],
+            "ratio_switching_interp_se": 0.05287354982535051,
+            "ratio_switching_interp_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  0.5860114389078304,
+                  0.7932719456927726
+                ],
+                "significance": "below"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  0.5934217566850408,
+                  0.8014631388232905
+                ],
+                "significance": "below"
+              }
+            },
+            "ratio_switching_side": "below",
+            "ratio_switching_sim": {
+              "draws": 50000,
+              "seed": 20261009,
+              "max_hours": 10000,
+              "transform": "logit",
+              "infinite": 0.0,
+              "undefined": 0.0,
+              "ci95": [
+                0.5862281315443911,
+                0.7920216612960548
+              ],
+              "ci95_hours": [
+                0.6,
+                0.8181818181818182
+              ]
+            }
+          },
+          "robust": {
+            "phi_se": [
+              0.03392011339246637,
+              0.013409379173729247
+            ],
+            "phi_t_unit": [
+              -2.7363563463466436,
+              -2.051946524621933
+            ],
+            "phi_ci95": [
+              [
+                0.840700281848978,
+                0.9736646830504757
+              ],
+              [
+                0.9462027707715778,
+                0.9987665712426793
+              ]
+            ],
+            "half_life_ci95_from_phi": [
+              [
+                3.994622628914995,
+                25.971947066091133
+              ],
+              [
+                12.53467256852881,
+                561.6211027066274
+              ]
+            ],
+            "p_stay_se": [
+              0.034920633546555585,
+              0.0924881212822003
+            ],
+            "expected_duration_se": [
+              9.880494804451544,
+              5.17297166591711
+            ],
+            "ratio_se": 0.1958411564547296,
+            "ratio_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  -0.09741833181475834,
+                  0.6702648948691295
+                ],
+                "significance": "below"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  0.07498968448431005,
+                  1.0939944175650738
+                ],
+                "significance": "ns"
+              },
+              "fieller": {
+                "shape": "bounded",
+                "bounds": [
+                  0.0077599096190499916,
+                  1.5046063557355287
+                ],
+                "significance": "ns"
+              }
+            },
+            "ratio_wald": {
+              "restriction": "phi_calm = phi_stressed",
+              "difference": -0.06530218855740166,
+              "se": 0.03889046084437638,
+              "z": -1.6791312609720452,
+              "p": 0.09312646491940269,
+              "significance": "ns"
+            },
+            "chain_eigenvalue_se": 0.12456952321523457,
+            "half_life_switching_interp_se": [
+              3.4299107412369496,
+              1.5690592586853438
+            ],
+            "ratio_switching_interp_se": 0.28197241488526037,
+            "ratio_switching_interp_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  0.1369859144914053,
+                  1.2422974701091976
+                ],
+                "significance": "ns"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  0.30945281803271657,
+                  1.5369246490705435
+                ],
+                "significance": "ns"
+              }
+            },
+            "ratio_switching_side": "ns",
+            "ratio_switching_sim": {
+              "draws": 50000,
+              "seed": 20261009,
+              "max_hours": 10000,
+              "transform": "logit",
+              "infinite": 0.001,
+              "undefined": 0.0,
+              "ci95": [
+                0.24276497688952722,
+                1.0130675420172222
+              ],
+              "ci95_hours": [
+                0.2631578947368421,
+                1.0
+              ]
+            }
+          }
+        },
+        "ratio_sandwich_variance": 0.03835375856152601,
+        "ratio_sandwich_top_hours": [
+          {
+            "index": 855,
+            "y": 2.351806,
+            "y_prev": 5.657900000000001,
+            "share": 0.09879865568650358
+          },
+          {
+            "index": 847,
+            "y": 9.515846,
+            "y_prev": 6.320455,
+            "share": 0.07431620758501495
+          },
+          {
+            "index": 854,
+            "y": 5.657900000000001,
+            "y_prev": 5.747140000000001,
+            "share": 0.038659774551765995
+          }
+        ]
       }
     },
     {
@@ -750,8 +1196,402 @@
           "best_seed": 20260817,
           "modal_llf": -4828.67,
           "modal_is_best": false,
+          "excluded": {
+            "non_finite_llf": 0,
+            "variance_floor": 0,
+            "singular_hessian": 0
+          },
+          "sigma2_floor": 8.219694646092975e-06,
           "refit_logL_gap": 0.0
-        }
+        },
+        "p_stay": [
+          0.9741754748148047,
+          0.6162978791129136
+        ],
+        "expected_duration_hours": [
+          38.72288039484579,
+          2.6061883569683837
+        ],
+        "stationary_share": [
+          0.936940549698353,
+          0.06305945030164682
+        ],
+        "chain_eigenvalue": 0.5904733539277183,
+        "half_life_switching_hours": [
+          25,
+          17
+        ],
+        "half_life_switching_interp_hours": [
+          24.513915508597965,
+          16.286839965581727
+        ],
+        "ratio_switching": 1.4705882352941178,
+        "ratio_switching_interp": 1.5051363898952872,
+        "inference": {
+          "hessian": {
+            "phi_se": [
+              0.0036595959825609934,
+              0.046189767662781045
+            ],
+            "phi_t_unit": [
+              -5.27608008900247,
+              -4.242924370407498
+            ],
+            "phi_ci95": [
+              [
+                0.9735190021788295,
+                0.9878643548264036
+              ],
+              [
+                0.7134900280468024,
+                0.8945505901934498
+              ]
+            ],
+            "half_life_ci95_from_phi": [
+              [
+                25.827142912523875,
+                56.7693532313543
+              ],
+              [
+                2.0532412494948025,
+                6.220258592277903
+              ]
+            ],
+            "p_stay_se": [
+              0.0038108297266825244,
+              0.044243875140763486
+            ],
+            "expected_duration_se": [
+              5.714192328927976,
+              0.30051403414825745
+            ],
+            "ratio_se": 4.202301615513712,
+            "ratio_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  2.9514608156996296,
+                  19.424180452862352
+                ],
+                "significance": "above"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  5.358241854039575,
+                  23.35977620168077
+                ],
+                "significance": "above"
+              },
+              "fieller": {
+                "shape": "bounded",
+                "bounds": [
+                  4.608332734754399,
+                  23.186781594793366
+                ],
+                "significance": "above"
+              }
+            },
+            "ratio_wald": {
+              "restriction": "phi_calm = phi_stressed",
+              "difference": 0.1766713693824904,
+              "se": 0.047587439548201126,
+              "z": 3.7125630431017553,
+              "p": 0.00020517093255684895,
+              "significance": "above"
+            },
+            "chain_eigenvalue_se": 0.04553876859131604,
+            "half_life_switching_interp_se": [
+              2.951226382796128,
+              3.09717370569988
+            ],
+            "ratio_switching_interp_se": 0.20479496155516916,
+            "ratio_switching_interp_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  1.1037456410318907,
+                  1.9065271387586837
+                ],
+                "significance": "above"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  1.1528104953587104,
+                  1.9651413318214987
+                ],
+                "significance": "above"
+              }
+            },
+            "ratio_switching_side": "above",
+            "ratio_switching_sim": {
+              "draws": 50000,
+              "seed": 20261009,
+              "max_hours": 10000,
+              "transform": "logit",
+              "infinite": 0.0,
+              "undefined": 0.0,
+              "ci95": [
+                1.1984615264593899,
+                2.1087588496153686
+              ],
+              "ci95_hours": [
+                1.1904761904761905,
+                2.076923076923077
+              ]
+            }
+          },
+          "opg": {
+            "phi_se": [
+              0.002617715649652039,
+              0.01594103164959485
+            ],
+            "phi_t_unit": [
+              -7.376019431274002,
+              -12.29404063599954
+            ],
+            "phi_ci95": [
+              [
+                0.9755610501075317,
+                0.9858223068977013
+              ],
+              [
+                0.7727764612105071,
+                0.8352641570297451
+              ]
+            ],
+            "half_life_ci95_from_phi": [
+              [
+                28.01439348012321,
+                48.54258502583871
+              ],
+              [
+                2.689061568892503,
+                3.850662607082199
+              ]
+            ],
+            "p_stay_se": [
+              0.0033467647056684775,
+              0.03769352305997323
+            ],
+            "expected_duration_se": [
+              5.018344712164809,
+              0.2560226164632797
+            ],
+            "ratio_se": 1.8445377952522566,
+            "ratio_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  7.5725929874636515,
+                  14.80304828109833
+                ],
+                "significance": "above"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  8.098559160974295,
+                  15.455506103851848
+                ],
+                "significance": "above"
+              },
+              "fieller": {
+                "shape": "bounded",
+                "bounds": [
+                  8.207095705003539,
+                  15.912817109580196
+                ],
+                "significance": "above"
+              }
+            },
+            "ratio_wald": {
+              "restriction": "phi_calm = phi_stressed",
+              "difference": 0.1766713693824904,
+              "se": 0.01617295948648101,
+              "z": 10.923873860573888,
+              "p": 8.863300325469895e-28,
+              "significance": "above"
+            },
+            "chain_eigenvalue_se": 0.0392295266652576,
+            "half_life_switching_interp_se": [
+              2.4130731254104325,
+              2.1486460038989037
+            ],
+            "ratio_switching_interp_se": 0.12714709089357895,
+            "ratio_switching_interp_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  1.2559326710048317,
+                  1.7543401087857426
+                ],
+                "significance": "above"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  1.275469896304661,
+                  1.7761576017987744
+                ],
+                "significance": "above"
+              }
+            },
+            "ratio_switching_side": "above",
+            "ratio_switching_sim": {
+              "draws": 50000,
+              "seed": 20261009,
+              "max_hours": 10000,
+              "transform": "logit",
+              "infinite": 0.0,
+              "undefined": 0.0,
+              "ci95": [
+                1.3130567360841892,
+                1.8506812516455375
+              ],
+              "ci95_hours": [
+                1.3,
+                1.8333333333333333
+              ]
+            }
+          },
+          "robust": {
+            "phi_se": [
+              0.006937287382478705,
+              0.17273909245655528
+            ],
+            "phi_t_unit": [
+              -2.7832667774654865,
+              -1.1345416262920551
+            ],
+            "phi_ci95": [
+              [
+                0.967094845082554,
+                0.994288511922679
+              ],
+              [
+                0.4654579091831432,
+                1.142582709057109
+              ]
+            ],
+            "half_life_ci95_from_phi": [
+              [
+                20.716496597822672,
+                121.01326845217012
+              ],
+              [
+                0.9063903746402229,
+                null
+              ]
+            ],
+            "p_stay_se": [
+              0.01168699678661101,
+              0.08913074727650777
+            ],
+            "expected_duration_se": [
+              17.524201335648407,
+              0.6053954439003045
+            ],
+            "ratio_se": 12.675256003438255,
+            "ratio_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  -13.655224627283092,
+                  36.030865895845075
+                ],
+                "significance": "ns"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  1.214438689926355,
+                  103.06599384809932
+                ],
+                "significance": "above"
+              },
+              "fieller": {
+                "shape": "bounded",
+                "bounds": [
+                  -9.74804618266997,
+                  70.82297521174212
+                ],
+                "significance": "ns"
+              }
+            },
+            "ratio_wald": {
+              "restriction": "phi_calm = phi_stressed",
+              "difference": 0.1766713693824904,
+              "se": 0.17463316032947515,
+              "z": 1.0116713747215582,
+              "p": 0.31169520661244504,
+              "significance": "ns"
+            },
+            "chain_eigenvalue_se": 0.08189929011052617,
+            "half_life_switching_interp_se": [
+              4.4866957691553635,
+              7.5315652733416
+            ],
+            "ratio_switching_interp_se": 0.5438038068678679,
+            "ratio_switching_interp_ci95": {
+              "linear": {
+                "shape": "bounded",
+                "bounds": [
+                  0.4393005137784909,
+                  2.5709722660120837
+                ],
+                "significance": "ns"
+              },
+              "log": {
+                "shape": "bounded",
+                "bounds": [
+                  0.7413748562948225,
+                  3.0557221261980896
+                ],
+                "significance": "ns"
+              }
+            },
+            "ratio_switching_side": "ns",
+            "ratio_switching_sim": {
+              "draws": 50000,
+              "seed": 20261009,
+              "max_hours": 10000,
+              "transform": "logit",
+              "infinite": 0.04188,
+              "undefined": 0.00432,
+              "ci95": [
+                0.0,
+                3.1428735536228403
+              ],
+              "ci95_hours": [
+                0.0,
+                3.0
+              ]
+            }
+          }
+        },
+        "ratio_sandwich_variance": 160.66211475271547,
+        "ratio_sandwich_top_hours": [
+          {
+            "index": 215,
+            "y": -3.132777,
+            "y_prev": 23.613179,
+            "share": 0.7671285628601415
+          },
+          {
+            "index": 2340,
+            "y": 9.515846,
+            "y_prev": 6.320455,
+            "share": 0.011871407190601133
+          },
+          {
+            "index": 138,
+            "y": 6.47418,
+            "y_prev": 8.770057,
+            "share": 0.007849390598411466
+          }
+        ]
       }
     }
   ],

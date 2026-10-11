@@ -1,8 +1,10 @@
 """Model selection beyond K=3.
 
-On the reproducible sub-sample K=4 converges from 40 starts and attains a
-*better* BIC than K=3, so the paper reports the comparison for K>=4 and keeps
-K=3 on stated grounds. These tests guard the helper that produces it.
+On the reproducible sub-sample every K is fitted from a wide multi-start (the
+40 default starts, 160 with spread volatilities and splits of the best K-1
+fit); K=4 attains a *better* BIC than K=3, so the paper reports the comparison
+for K>=4 and keeps K=3 on stated grounds. These tests guard the helper and the
+artifact.
 """
 import numpy as np
 import pytest
@@ -37,7 +39,7 @@ class TestModelSelection:
         assert [rec["K"] for rec in got] == [2, 3]
 
     def test_free_parameter_count_follows_the_paper_s_formula(self, r):
-        """|theta_K| = K^2 + 2K - 1, as stated in Section 2.1."""
+        """|theta_K| = K^2 + 2K - 1, the parameter count of Table C7."""
         got = model_selection(r, ks=(2, 3, 4), n_starts=2, n_iter=20)
         assert [rec["n_params"] for rec in got] == [7, 14, 23]
 
@@ -49,7 +51,7 @@ class TestModelSelection:
 
 
 class TestManuscriptAgreement:
-    """The BIC figures Section 4.3 prints, pinned against the artifact.
+    """The BIC figures Section 6.2 prints, pinned against the artifact.
 
     The paper reports the fits for K>=4 alongside K=3, so these four numbers
     appear in the text and have to track the file that produced them.
@@ -68,7 +70,7 @@ class TestManuscriptAgreement:
         return {r["K"]: r for r in json.loads(path.read_text())["records"]}
 
     @pytest.mark.parametrize("K,bic", [
-        (2, -28356.8), (3, -28533.4), (4, -28557.0), (5, -28482.2),
+        (2, -28356.8), (3, -28533.4), (4, -28557.0), (5, -28500.6),
     ])
     def test_bic_matches_the_printed_figure(self, recs, K, bic):
         assert round(recs[K]["BIC"], 1) == bic
@@ -82,8 +84,49 @@ class TestManuscriptAgreement:
         assert round(gain_k3, 1) == -176.6
         assert round(gain_k3 / gain_k4, 1) == 7.5
 
+    def test_every_k_converges_under_the_wide_protocol(self, recs):
+        for K in (2, 3, 4, 5):
+            c = recs[K]["convergence"]
+            assert recs[K]["converged"] and c["all_starts_converged"], K
+            assert c["polish"]["converged"], K
+            assert c["start_families"]["default"] == 40, K
+            assert c["start_families"]["spread"] == 160, K
+            assert c["start_families"]["split"] == 3 * (K - 1), K
+
+    def test_how_many_starts_reach_the_best_optimum(self, recs):
+        reach = {K: (recs[K]["n_starts_reaching_best"], recs[K]["n_starts"]) for K in recs}
+        assert reach == {2: (203, 203), 3: (206, 206), 4: (143, 209), 5: (19, 212)}
+        # the 40 default starts find the best optimum up to K = 4, not for K = 5
+        by_family = recs[5]["convergence"]["n_reaching_best_by_family"]
+        assert by_family == {"default": 0, "spread": 19, "split": 0}
+        for K in (2, 3, 4):
+            assert recs[K]["default_protocol"]["is_best_optimum"], K
+        d5 = recs[5]["default_protocol"]
+        assert not d5["is_best_optimum"]
+        assert round(d5["logL"], 2) == 14380.15 and round(d5["BIC"], 1) == -28482.8
+
+    def test_k5_gains_the_log_likelihood_the_text_quotes(self, recs):
+        assert round(recs[5]["logL"], 4) == 14389.0743
+        assert round(recs[5]["logL"] - recs[4]["logL"], 1) == 16.7
+
     def test_k5_falls_behind_k3_so_there_is_no_plateau(self, recs):
-        assert round(recs[5]["BIC"] - recs[3]["BIC"], 1) == 51.2
+        assert round(recs[5]["BIC"] - recs[3]["BIC"], 1) == 32.8
+
+    def test_the_fifth_state_captures_one_episode(self, recs):
+        """K=5 repeats the K=4 ladder and adds a persistent state at the third rung."""
+        k4 = [round(v, 1) for v in recs[4]["sigma_bps_per_hour"]]
+        s5 = recs[5]["states"]
+        sig = [round(st["sigma_bps_per_hour"], 1) for st in s5]
+        assert sig == [11.1, 24.5, 56.8, 59.5, 143.5]
+        assert k4 == [11.1, 24.8, 55.8, 134.9]
+        extra = s5[3]
+        assert round(extra["expected_duration_h"]) == 34
+        assert round(s5[2]["expected_duration_h"], 1) == 4.6
+        assert extra["first_hour_held"].startswith("2026-01-31")
+        assert extra["last_hour_held"].startswith("2026-03-11")
+        # every other state holds hours across the whole sub-period
+        for st in s5[:3] + s5[4:]:
+            assert st["first_hour_held"] < "2025-12-15" and st["last_hour_held"] > "2026-04-01"
 
     def test_the_k4_volatility_ladder_is_the_one_the_text_describes(self, recs):
         got = [round(v, 1) for v in recs[4]["sigma_bps_per_hour"]]

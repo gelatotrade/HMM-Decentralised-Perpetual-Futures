@@ -26,11 +26,26 @@ EPS = 1e-300
 # --------------------------------------------------------------------------
 @dataclass
 class GaussianHMM:
+    """K-state Gaussian HMM fitted by Baum--Welch from ``n_starts`` random starts.
+
+    ``fit`` runs every start until the log-likelihood rises by less than
+    ``tol`` (``n_iter`` is a safeguard cap), keeps the first start with the
+    largest final log-likelihood, and continues it until the log-likelihood
+    changes by less than ``polish_tol`` and no parameter moves by more than
+    ``polish_step_tol`` per iteration (``polish_cap`` iterations at most).
+    ``polish_tol=None`` returns the selected start as the tolerance rule left
+    it. ``fit_report_`` records, per start and for the polish, how many
+    iterations ran, whether the stopping rule fired and the last change of the
+    log-likelihood; ``converged_`` is true when every rule fired before its cap.
+    """
     K: int = 2
-    n_iter: int = 200
+    n_iter: int = 100_000
     tol: float = 1e-6
     n_starts: int = 10
     random_state: int = 42
+    polish_tol: float | None = 1e-9
+    polish_step_tol: float | None = 1e-10
+    polish_cap: int = 100_000
 
     # learned parameters (filled after .fit)
     pi: np.ndarray = field(default=None)        # (K,)
@@ -38,7 +53,8 @@ class GaussianHMM:
     mu: np.ndarray = field(default=None)        # (K,)
     sigma: np.ndarray = field(default=None)     # (K,)
     log_likelihood_: float = field(default=None)
-    history_: list = field(default_factory=list)
+    fit_report_: dict = field(default=None)
+    converged_: bool = field(default=None)
 
     # ----- core algorithms -----
     def _emission_logprob(self, x: np.ndarray) -> np.ndarray:
@@ -128,46 +144,36 @@ class GaussianHMM:
         self.sigma = np.full(self.K, x.std()) * rng.uniform(0.5, 1.5, size=self.K)
 
     def fit(self, x: np.ndarray):
+        """Fit by the multi-start protocol of :func:`regime_engine.hmm_batch.fit_protocol`.
+
+        The starts are those ``_init_random`` draws from per-start seeds of
+        ``default_rng(random_state)``. The E- and M-steps are this class's,
+        run in scaled form on all starts at once; ``tests/test_hmm_batch.py``
+        checks that the two forms agree. ``log_likelihood_`` is evaluated at
+        the returned parameters.
+
+        States come back sorted by sigma ascending, which is the rule the paper
+        states for the Gaussian HMM and the only one that is stable here: two
+        of the three fitted means sit within their sampling variability of one
+        another, so a mu-ascending sort permutes states from replication to
+        replication and the label noise swamps the estimator's own. Sorting on
+        sigma keeps index k meaning the same state in every table, figure and
+        JSON artifact this package writes.
+        """
+        from .hmm_batch import fit_protocol
+
         x = np.asarray(x, dtype=float)
-        best_ll = -np.inf
-        best_params = None
-        master_rng = np.random.default_rng(self.random_state)
-
-        for _start in range(self.n_starts):
-            seed = master_rng.integers(0, 10**9)
-            rng = np.random.default_rng(seed)
-            self._init_random(x, rng)
-
-            history = []
-            prev_ll = -np.inf
-            for it in range(self.n_iter):
-                gamma, xi_sum, ll = self._e_step(x)
-                history.append(ll)
-                self._m_step(x, gamma, xi_sum)
-                if ll - prev_ll < self.tol and it > 5:
-                    break
-                prev_ll = ll
-
-            if ll > best_ll:
-                best_ll = ll
-                best_params = (self.pi.copy(), self.A.copy(), self.mu.copy(), self.sigma.copy())
-                self.history_ = history
-
-        self.pi, self.A, self.mu, self.sigma = best_params
-        self.log_likelihood_ = best_ll
-
-        # Resolve label switching by sigma ascending, which is the rule the
-        # paper states for the Gaussian HMM and the only one that is stable here:
-        # two of the three fitted means sit within their sampling variability of
-        # one another, so a mu-ascending sort permutes states from replication
-        # to replication and the label noise swamps the estimator's own.
-        # Sorting on sigma keeps index k meaning the same state in every table,
-        # figure and JSON artifact this package writes.
-        order = np.argsort(self.sigma)
-        self.pi = self.pi[order]
-        self.A = self.A[np.ix_(order, order)]
-        self.mu = self.mu[order]
-        self.sigma = self.sigma[order]
+        out = fit_protocol(x, self.K, self.n_starts, self.random_state,
+                           n_iter=self.n_iter, tol=self.tol,
+                           polish_tol=self.polish_tol,
+                           polish_step_tol=self.polish_step_tol,
+                           polish_cap=self.polish_cap)
+        p = out["params"]
+        self.pi, self.A, self.mu, self.sigma = (np.asarray(p[k], dtype=float)
+                                                for k in ("pi", "A", "mu", "sigma"))
+        self.log_likelihood_ = float(out["ll"])
+        self.fit_report_ = out["record"]
+        self.converged_ = bool(out["record"]["converged"])
         return self
 
     def filtered_posterior(self, x: np.ndarray) -> np.ndarray:

@@ -35,8 +35,8 @@ def test_sigma_recovery(simulated):
 def test_states_come_back_ordered_by_sigma_ascending(simulated):
     """The paper's labelling rule, enforced where the labels are assigned.
 
-    Section 2.1 orders states by sigma ascending and Appendix B gives the case
-    against mu-ascending: on this data two of three means sit inside their
+    Appendix A orders states by sigma ascending and gives the case against
+    mu-ascending: on this data two of three means sit inside their
     sampling variability, so that rule reorders states between replications.
     The estimator has to be the thing that guarantees the order, otherwise
     every downstream artifact (tables, figures, JSON) carries a different

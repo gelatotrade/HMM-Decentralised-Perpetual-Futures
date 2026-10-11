@@ -5,8 +5,9 @@ Hyperliquid, Binance and Bybit compute funding with the same rule,
     F = P + clamp(r - P, -0.05%, +0.05%),   r = 0.01% per 8h,
 
 so each pays exactly the interest floor, 0.01% per 8h, whenever its premium P
-lies inside (-4, +6) bps (8h-equivalent). Hyperliquid settles every hour, at
-F / 8, so its floor is 0.125 bps/h; Binance and Bybit settle every eight hours.
+lies in the band [-4, +6] bps (8h-equivalent), on whose edges the clamp
+saturates. Hyperliquid settles every hour, at F / 8, so its floor is
+0.125 bps/h; Binance and Bybit settle every eight hours.
 A settlement at the floor says only that the premium sat inside the band; one
 above or below it identifies the premium exactly.
 
@@ -27,6 +28,7 @@ from decimal import Decimal
 import numpy as np
 import pandas as pd
 
+from .panel import describe_series
 from .paths import DEFAULT_OUT, REPO_ROOT
 
 FLOOR_8H = Decimal("0.0001")          # 0.01% per 8h
@@ -88,11 +90,32 @@ def spacing_hours(times: pd.Series) -> list:
 
 
 def premium_location(bps) -> dict:
-    """Mean, standard deviation and share inside the band of a premium series in bps."""
+    """Mean, standard deviation and share inside the band of a premium series in bps.
+
+    The band is closed: at either edge the clamp saturates and the rule pays the floor.
+    """
     x = pd.Series(bps, dtype=float).dropna()
     lo, hi = BAND_BPS
     return {"n": int(len(x)), "mean_bps": float(x.mean()), "sd_bps": float(x.std(ddof=1)),
-            "share_in_band": float(((x > lo) & (x < hi)).mean())}
+            "share_in_band": float(((x >= lo) & (x <= hi)).mean())}
+
+
+def phase_shares(times: pd.Series, rates, floor: Decimal = FLOOR_HOURLY) -> dict:
+    """Share of hourly settlements at the floor by phase, the stamp's UTC hour mod 8.
+
+    The eight phases partition the hours, so their shares average the hourly share by
+    construction; only their spread says whether reading the series every eighth
+    hour changes it. Phase 0 holds the 00, 08 and 16 UTC stamps.
+    """
+    phase = pd.Series(times).reset_index(drop=True).dt.hour % 8
+    at = pd.Series([Decimal(str(r).strip()) == floor for r in rates])
+    by_phase = {}
+    for k in range(8):
+        sel = at[phase == k]
+        by_phase[str(k)] = {"n": int(len(sel)), "at_floor": int(sel.sum()),
+                            "share_at_floor": float(sel.mean())}
+    shares = [d["share_at_floor"] for d in by_phase.values()]
+    return {"by_phase": by_phase, "min": min(shares), "max": max(shares)}
 
 
 def funding_rule(premium_bps, floor_bps: float = float(FLOOR_8H) * 1e4,
@@ -100,7 +123,7 @@ def funding_rule(premium_bps, floor_bps: float = float(FLOOR_8H) * 1e4,
     """Funding per eight hours against the averaged premium, in bps.
 
     F = P + clamp(r - P, -c, +c): exactly the floor r while the premium lies in
-    the band (r - c, r + c) of BAND_BPS, and the premium shifted by c outside it.
+    the band [r - c, r + c] of BAND_BPS, and the premium shifted by c outside it.
     """
     p = np.asarray(premium_bps, dtype=float)
     return p + np.clip(floor_bps - p, -clamp_bps, clamp_bps)
@@ -186,9 +209,15 @@ def build_payload(data_dir=DATA) -> dict:
     for w in WINDOWS:
         m = in_window(hl["time"], w)
         hourly = hl.loc[m, "premium"] * 1e4
-        venues["hyperliquid"][w] = {**classify(hl.loc[m, "fundingRate"], FLOOR_HOURLY),
-                                    "premium": {"source": "hourly average premium",
-                                                **premium_location(hourly), **_quartiles(hourly)}}
+        funding_bps = hl.loc[m, "fundingRate"].astype(float) * 1e4
+        venues["hyperliquid"][w] = {
+            **classify(hl.loc[m, "fundingRate"], FLOOR_HOURLY),
+            "premium": {"source": "hourly average premium",
+                        **premium_location(hourly), **_quartiles(hourly)},
+            "descriptives": {"funding_bps_per_hour": describe_series(funding_bps),
+                             "premium_bps": describe_series(hourly)},
+            "phase_shares": phase_shares(hl.loc[m, "time"], hl.loc[m, "fundingRate"]),
+        }
         stamped = m & at_settlement_stamps(hl["time"])
         venues["hyperliquid_at_8h_stamps"][w] = classify(hl.loc[stamped, "fundingRate"],
                                                          FLOOR_HOURLY)
@@ -212,7 +241,11 @@ def build_payload(data_dir=DATA) -> dict:
                   "Premium: Hyperliquid's hourly average premium; for Binance and Bybit, the "
                   "premium each settlement identifies outside the band (F - 0.05% below it), "
                   "with in-band settlements treated as censored; premium_index_8h_means is an "
-                  "approximation from the hourly premium index. Band: (-4, +6) bps."),
+                  "approximation from the hourly premium index. Hyperliquid also carries "
+                  "descriptives of its hourly funding rate (bps/h) and premium (bps; skew "
+                  "without bias correction) and phase_shares, the share at the floor by stamp "
+                  "hour mod 8 (phase 0: the 00/08/16 UTC stamps). Band: the closed interval "
+                  "[-4, +6] bps, on whose edges the clamp saturates."),
         "floors": {"8h": str(FLOOR_8H), "hourly": str(FLOOR_HOURLY)},
         "band_bps": list(BAND_BPS),
         "windows": WINDOWS,
@@ -243,18 +276,23 @@ def write_table(payload: dict) -> str:
            " & & \\multicolumn{5}{c}{" + window_label("paper") + "} & "
            "\\multicolumn{2}{c}{" + window_label("later") + "} \\\\",
            "\\cmidrule(lr){3-7}\\cmidrule(lr){8-9}",
-           "Venue & Settles & $n$ & At floor & Below & Median & IQR & $n$ & At floor \\\\",
+           "Venue & Settles & $n$ & At floor & Below & Median & Quartiles & $n$ & At floor \\\\",
            "\\midrule"]
     for name, settles, d in rows:
         p, later = d["paper"], d["later"]
         prem = p.get("premium")
-        median = _signed(prem["median_bps"]) if prem else ""
-        iqr = f"[{_signed(prem['q25_bps'])}, {_signed(prem['q75_bps'])}]" if prem else ""
+        median = _signed(prem["median_bps"]) if prem else "--"
+        iqr = f"[{_signed(prem['q25_bps'])}, {_signed(prem['q75_bps'])}]" if prem else "--"
         tex.append(f"{name} & {settles} & {p['n']:,} & {_pct(p['share_at_floor'])} & "
                    f"{_pct(p['share_below'])} & {median} & {iqr} & {later['n']:,} & "
                    f"{_pct(later['share_at_floor'])} \\\\")
     tex += ["\\bottomrule", "\\end{tabular}", ""]
     return "\n".join(tex)
+
+
+#: Figure 2 is drawn at the width the paper prints it (15.8 cm), so that no text
+#: prints below 7 pt.
+FIG_WIDTH_IN = 6.55
 
 
 def figure_layout():
@@ -264,15 +302,15 @@ def figure_layout():
     import matplotlib.pyplot as plt
 
     plt.rcParams.update({
-        "font.family": "serif", "font.size": 8.5, "axes.labelsize": 8.5, "axes.titlesize": 8.5,
-        "xtick.labelsize": 8, "ytick.labelsize": 8,
+        "font.family": "serif", "font.size": 8, "axes.labelsize": 8, "axes.titlesize": 8.5,
+        "xtick.labelsize": 7.5, "ytick.labelsize": 7.5,
         "axes.spines.top": False, "axes.spines.right": False, "axes.grid": True,
         "grid.alpha": 0.25, "grid.linewidth": 0.4, "figure.dpi": 130, "savefig.dpi": 200,
         "savefig.bbox": "tight", "lines.linewidth": 1.1, "pdf.fonttype": 42, "ps.fonttype": 42,
     })
-    fig = plt.figure(figsize=(8.0, 4.3))
-    gs = fig.add_gridspec(2, 2, width_ratios=[1.35, 1], height_ratios=[1, 1.5],
-                          hspace=0.16, wspace=0.42)
+    fig = plt.figure(figsize=(FIG_WIDTH_IN, 4.0))
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.3, 1], height_ratios=[1, 1.45],
+                          hspace=0.3, wspace=0.55)
     rule = fig.add_subplot(gs[0, 0])
     density = fig.add_subplot(gs[1, 0], sharex=rule)
     bars = fig.add_subplot(gs[:, 1])
@@ -297,15 +335,16 @@ def figure(payload: dict, data_dir=DATA, out_dir=DEFAULT_OUT / "figures") -> pat
     clamp = float(CLAMP) * 1e4
     ax_rule.axvspan(*BAND_BPS, color=band_color, zorder=0)
     ax_rule.plot(grid, funding_rule(grid), color=ink, lw=1.5)
-    ax_rule.text(-13.4, 1.0, f"below the band:\npremium + {clamp:.0f} bps",
-                 fontsize=7, color=muted, ha="left", va="bottom")
-    ax_rule.text(9.8, -2.0, f"above:\npremium \u2212 {clamp:.0f} bps",
-                 fontsize=7, color=muted, ha="right", va="top")
-    ax_rule.text(1.0, floor + 1.4, f"in the band:\nfunding = floor, {floor:.0f} bp per 8 h",
-                 fontsize=7, color=muted, ha="center", va="bottom")
+    ax_rule.text(-13.6, 6.4, f"below the band:\npremium + {clamp:.0f} bps",
+                 fontsize=7, color=muted, ha="left", va="top")
+    # right of the band, running a few points past the axes into the empty margin
+    ax_rule.text(6.3, -1.6, f"above:\npremium\n\u2212 {clamp:.0f} bps",
+                 fontsize=7, color=muted, ha="left", va="top")
+    ax_rule.text(1.0, floor - 1.3, f"in the band:\nthe floor,\n{floor:.0f} bp per 8 h",
+                 fontsize=7, color=muted, ha="center", va="top")
     ax_rule.set_ylim(-10, 7)
     ax_rule.set_ylabel("Funding (bps per 8 h)")
-    ax_rule.set_title("(a) The rule: funding against premium", loc="left", fontsize=9,
+    ax_rule.set_title("(a) The rule: funding against premium", loc="left", fontsize=8.5,
                       fontweight="bold")
     ax_rule.tick_params(labelbottom=False)
 
@@ -320,31 +359,31 @@ def figure(payload: dict, data_dir=DATA, out_dir=DEFAULT_OUT / "figures") -> pat
         series[venue] = (recovered.dropna(), len(recovered))
     ax_b.axvspan(*BAND_BPS, color=band_color, zorder=0)
     palette = {"hyperliquid": "#1B7F79", "binance": "#C98A0B", "bybit": "#5A4FCF"}
+    styles = {"hyperliquid": "-", "binance": "--", "bybit": ":"}    # as in Figures 3 and 4
     bins = [x / 2 for x in range(-28, 21)]                      # -14 ... +10 bps, 0.5 bp bins
     for venue, (x, n) in series.items():
         prem = v[venue]["paper"]["premium"]
-        kind = "hourly" if venue == "hyperliquid" else "from settlements"
         # density over all settlements, so a venue's curve integrates to its identified share
         ax_b.hist(x.clip(*xlim), bins=bins, weights=np.full(len(x), 1.0 / (n * 0.5)),
-                  histtype="step", linewidth=1.4, color=palette[venue],
-                  label=f"{LABELS[venue]}, {kind}\n(median {prem['median_bps']:.2f} bps)"
-                        .replace("-", "\u2212"))
+                  histtype="step", linewidth=1.4, color=palette[venue], ls=styles[venue],
+                  label=f"{LABELS[venue]} ({prem['median_bps']:.2f})".replace("-", "\u2212"))
     shares = "\n".join(f"{LABELS[e]} {100 * v[e]['paper']['share_at_floor']:.1f}%"
                         for e in EXCHANGES)
-    ax_b.text(1.3, 0.32, f"in band, value\nnot identified:\n{shares}",
+    ax_b.text(1.0, 0.25, f"in the band,\nnot identified:\n{shares}",
               transform=ax_b.get_xaxis_transform(), ha="center", va="center", fontsize=7,
               color=muted)
     ax_b.set_xlim(*xlim)
-    ax_b.set_xlabel("Premium (bps, 8h-equivalent)")
+    ax_b.set_xlabel("Premium (bps, 8-hour equivalent)")
     ax_b.set_ylabel("Density")
-    ax_b.set_ylim(0, ax_b.get_ylim()[1] * 1.1)
-    ax_b.legend(fontsize=7, frameon=False, loc="upper right")      # the right half is empty
-    ax_b.set_title("(b) Where each venue's premium sits", loc="left", fontsize=9,
+    ax_b.set_ylim(0, ax_b.get_ylim()[1] * 1.25)
+    ax_b.legend(fontsize=7, frameon=False, loc="upper right", title="median, bps",
+                title_fontsize=7, handlelength=1.4, borderaxespad=0.1)
+    ax_b.set_title("(b) Where each venue's premium sits", loc="left", fontsize=8.5,
                    fontweight="bold")
 
     # (c) composition of settlements, paper window
     rows = [("Hyperliquid\nhourly", v["hyperliquid"]["paper"]),
-            ("Hyperliquid\nat 00/08/16 UTC", v["hyperliquid_at_8h_stamps"]["paper"]),
+            ("Hyperliquid\n00/08/16 UTC", v["hyperliquid_at_8h_stamps"]["paper"]),
             ("Binance\nevery 8 h", v["binance"]["paper"]),
             ("Bybit\nevery 8 h", v["bybit"]["paper"])]
     colors = {"below": "#2E86AB", "at": "#3D3D3D", "above": "#C73E1D"}
@@ -356,18 +395,17 @@ def figure(payload: dict, data_dir=DATA, out_dir=DEFAULT_OUT / "figures") -> pat
         ax_a.text(below + at / 2 if at > 0.08 else below + at + 0.01, i,
                   f"{100 * at:.1f}%", va="center",
                   ha="center" if at > 0.08 else "left",
-                  color="white" if at > 0.08 else "#3D3D3D", fontsize=8, fontweight="bold")
+                  color="white" if at > 0.08 else "#3D3D3D", fontsize=7.5, fontweight="bold")
     ax_a.set_yticks(range(len(rows)), [r[0] for r in rows[::-1]])
     ax_a.set_xlim(0, 1)
     ax_a.xaxis.set_major_formatter(PercentFormatter(1.0))
     ax_a.grid(axis="y", visible=False)
     ax_a.legend(handles=[Patch(color=colors["below"], label="below the band"),
-                         Patch(color=colors["at"], label="at the floor (in band)"),
+                         Patch(color=colors["at"], label="at the floor (in the band)"),
                          Patch(color=colors["above"], label="above the band")],
-                loc="upper center", bbox_to_anchor=(0.42, -0.07), ncol=2, fontsize=7,
+                loc="upper center", bbox_to_anchor=(0.4, -0.07), ncol=1, fontsize=7,
                 frameon=False)
-    ax_a.set_title("(c) Settlements, " + window_label("paper").replace(" -- ", " \u2013 "),
-                   loc="left", fontsize=9, fontweight="bold")
+    ax_a.set_title("(c) Share of settlements", loc="left", fontsize=8.5, fontweight="bold")
 
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

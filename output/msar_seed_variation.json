@@ -1,5 +1,5 @@
 {
- "_note": "MS-AR(1) on the paper-window premium (T = 5,001), the paper's protocol repeated on six disjoint blocks of 40 consecutive seeds. Records how many starts reach each optimum. Backs the seed sentence of Section 5.3.",
+ "_note": "MS-AR(1) on the paper-window premium (T = 5,001), the paper's protocol repeated on six disjoint blocks of 40 consecutive seeds. Records how many starts reach each optimum. Backs the seed sentence of Section 6.1.",
  "protocol": {
   "n_starts": 40,
   "search_reps": 40,
@@ -26,7 +26,12 @@
    "failures": 0,
    "best_llf": -4808.53,
    "best_seed": 20260817,
-   "modal_is_best": false
+   "modal_is_best": false,
+   "excluded": {
+    "non_finite_llf": 0,
+    "variance_floor": 0,
+    "singular_hessian": 0
+   }
   },
   {
    "seed_base": 20260842,
@@ -47,7 +52,12 @@
    "failures": 0,
    "best_llf": -4808.53,
    "best_seed": 20260871,
-   "modal_is_best": false
+   "modal_is_best": false,
+   "excluded": {
+    "non_finite_llf": 0,
+    "variance_floor": 0,
+    "singular_hessian": 0
+   }
   },
   {
    "seed_base": 20260882,
@@ -68,7 +78,12 @@
    "failures": 0,
    "best_llf": -4808.53,
    "best_seed": 20260906,
-   "modal_is_best": false
+   "modal_is_best": false,
+   "excluded": {
+    "non_finite_llf": 0,
+    "variance_floor": 0,
+    "singular_hessian": 0
+   }
   },
   {
    "seed_base": 20260922,
@@ -89,7 +104,12 @@
    "failures": 0,
    "best_llf": -4808.53,
    "best_seed": 20260945,
-   "modal_is_best": false
+   "modal_is_best": false,
+   "excluded": {
+    "non_finite_llf": 0,
+    "variance_floor": 0,
+    "singular_hessian": 0
+   }
   },
   {
    "seed_base": 20260962,
@@ -110,7 +130,12 @@
    "failures": 0,
    "best_llf": -4808.53,
    "best_seed": 20260988,
-   "modal_is_best": false
+   "modal_is_best": false,
+   "excluded": {
+    "non_finite_llf": 0,
+    "variance_floor": 0,
+    "singular_hessian": 0
+   }
   },
   {
    "seed_base": 20261002,
@@ -131,7 +156,12 @@
    "failures": 0,
    "best_llf": -4808.53,
    "best_seed": 20261033,
-   "modal_is_best": false
+   "modal_is_best": false,
+   "excluded": {
+    "non_finite_llf": 0,
+    "variance_floor": 0,
+    "singular_hessian": 0
+   }
   }
  ],
  "starts_at_inferior_optimum": {

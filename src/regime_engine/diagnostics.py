@@ -87,7 +87,7 @@ BOOT_TOL = 1e-6
 # fails the moment the two drift apart.
 HMM_SEED_BASE = 42
 HMM_N_STARTS = 8
-HMM_N_ITER = 150
+HMM_N_ITER = 100_000       # safeguard cap; GaussianHMM.fit runs to its tolerances
 
 
 # ==========================================================================
@@ -131,10 +131,10 @@ def reconstruct_transition_matrix(diag_A, stationary, zero_cell) -> np.ndarray:
       * each row has two off-diagonal cells whose sum is fixed at ``1 - A_kk``,
         leaving one free split per row, i.e. three unknowns;
       * ``pi A = pi`` supplies two independent linear equations;
-      * the boundary estimate ``A[zero_cell] = 0`` supplies the third.
+      * the zero imposed on ``A[zero_cell]`` supplies the third.
 
-    ``zero_cell`` is the ``(i, j)`` index of the cell the fit put on the
-    boundary.  It is a statement about the *stored* array, not about the
+    ``zero_cell`` is the ``(i, j)`` index of the cell the original fit printed
+    as 0.000.  It is a statement about the *stored* array, not about the
     estimator: the arrays in ``summary_FULLSAMPLE_*.json`` are in mu-ascending
     order, which puts the high-to-low transition at ``(0, 1)``.  Artifacts
     written by the current code are sigma-ascending (``hmm.fit``), which puts
@@ -233,9 +233,9 @@ def _em_from(x, init, n_iter=BOOT_N_ITER, tol=BOOT_TOL):
         if ll - prev < tol and it > 5:
             break
         prev = ll
-    # Report the likelihood OF THE RETURNED PARAMETERS, not of the parameters
-    # one M-step earlier (which is what GaussianHMM.fit stores).  The gap is
-    # bounded by `tol` but it is free to remove.
+    # Report the likelihood of the returned parameters, not that of the last
+    # E-step, which ran one M-step earlier; GaussianHMM.fit reports the
+    # likelihood at its returned parameters too.
     _, _, ll = hmm._e_step(x)
     hmm.log_likelihood_ = float(ll)
     return hmm, used
@@ -306,11 +306,8 @@ def _rep_worker(args):
     if multistart:
         ms = GaussianHMM(K=len(mu), n_starts=n_starts, n_iter=n_iter_ms,
                          random_state=int(seed) % (2 ** 31)).fit(x)
-        # GaussianHMM.fit stores the likelihood of the parameters ONE M-step
-        # before the ones it returns (it breaks after recording `ll`, then the
-        # M-step has already run). The gap is bounded by `tol`, but comparing it
-        # against _em_from's likelihood -- which is evaluated at the returned
-        # parameters -- would be an apples-to-oranges comparison, so re-evaluate.
+        # Both likelihoods are evaluated at the returned parameters by the same
+        # log-space E-step, so the comparison with _em_from is like for like.
         _, _, ms_ll = ms._e_step(x)
         out["ms_mu"] = ms.mu.copy()
         out["ms_sigma"] = ms.sigma.copy()
@@ -350,6 +347,10 @@ def bootstrap_hmm(params: dict, T: int, n_reps: int = 500, seed: int = 20260819,
     A = np.asarray(params["A"], dtype=float)
     K = mu.size
     pi_stat = _stationary(A)
+    # The rule-of-three bound counts hours of the HIGH-volatility state, which
+    # is the highest-sigma index in whatever order the caller passes: index 0
+    # under the archive's mu-ascending order, index K-1 under sigma-ascending.
+    high = int(np.argmax(sigma))
 
     ss = np.random.SeedSequence(seed)
     seeds = [int(s.generate_state(1, dtype=np.uint32)[0]) for s in ss.spawn(n_reps)]
@@ -375,7 +376,7 @@ def bootstrap_hmm(params: dict, T: int, n_reps: int = 500, seed: int = 20260819,
     truth_sig = _sigma_rank_signature(mu, sigma)
     store = {rule: {"mu": [], "sigma": [], "A": []} for rule in ("mu", "sigma")}
     signatures = []
-    lls, iters, n_state1 = [], [], []
+    lls, iters, n_high = [], [], []
     for rep in reps:
         for rule in ("mu", "sigma"):
             _, m, s, a = _order_by(rep["mu"], rep["sigma"], rep["A"], rule)
@@ -385,7 +386,7 @@ def bootstrap_hmm(params: dict, T: int, n_reps: int = 500, seed: int = 20260819,
         signatures.append(_sigma_rank_signature(rep["mu"], rep["sigma"]))
         lls.append(rep["ll"])
         iters.append(rep["em_iters"])
-        n_state1.append(rep["n_state_hours"][0])
+        n_high.append(rep["n_state_hours"][high])
 
     # Point estimates in each labelling, for the bias column.
     _, mu_mu, sig_mu, A_mu = _order_by(mu, sigma, A, "mu")
@@ -422,21 +423,26 @@ def bootstrap_hmm(params: dict, T: int, n_reps: int = 500, seed: int = 20260819,
                     for i in range(K)]
     boundary_cells = [(i, j) for i in range(K) for j in range(K)
                       if i != j and A_mu[i, j] < 1e-8]
-    n1 = float(np.mean(n_state1))
+    n1 = float(np.mean(n_high))
     boundary = {
         "definition": "a cell counts as at the boundary when the refit returns < 1e-8",
         "point_boundary_cells_1indexed": [[i + 1, j + 1] for i, j in boundary_cells],
         "frac_reps_at_zero_mu_labelling": zero_frac_mu,
         "frac_reps_at_zero_sigma_labelling": zero_frac_sg,
-        "mean_state1_hours_per_rep": n1,
+        "high_state_index_input_order": high,
+        "mean_high_state_hours_per_rep": n1,
         "rule_of_three_bound_per_hour": 3.0 / n1 if n1 > 0 else None,
         "note": ("A percentile interval for a cell estimated at the boundary is "
                  "degenerate: the parametric bootstrap simulates from A_ij = 0, so "
                  "no replication can produce a positive count and the interval "
-                 "collapses to [0, 0]. The rule-of-three bound 3/n is the primary "
-                 "statement about that cell; the bootstrap says only that the "
-                 "estimator is not noisy *given* the null, not that the true value "
-                 "is zero. See `boundary_power` for the complementary calculation."),
+                 "collapses to [0, 0]. The bootstrap says only that the estimator "
+                 "is not noisy *given* the null, not that the true value is zero. "
+                 "The rule-of-three bound 3/n over the mean high-state hours treats "
+                 "latent state hours as observed trials and is not a likelihood "
+                 "bound for a hidden chain; scripts/a31_evidence.py computes the "
+                 "profile-likelihood bound, and its 'power' block the "
+                 "complementary calculation: how often the maximum-likelihood "
+                 "estimate is exactly zero when the true cell is not."),
     }
 
     # ---- label-switching diagnostic ---------------------------------------
@@ -520,15 +526,18 @@ def _multistart_report(reps, n_checked: int) -> dict | None:
 def boundary_power(params: dict, T: int, cell, alternatives=(0.003, 0.01),
                    n_reps: int = 200, seed: int = 20260820,
                    n_jobs: int | None = None) -> list:
-    """How often does the MLE return exactly zero when the truth is *not* zero?
+    """How often does EM at the bootstrap stopping rule return zero when the truth is not?
 
     The bootstrap under the fitted null is uninformative about a boundary cell
     (it can only ever return zero).  The informative question is the
     converse: if the true hourly probability were as large as the rule-of-three
     bound, would this sample size have detected it?  We simulate under
     ``A[cell] = a`` for each alternative ``a`` (renormalising the row against the
-    cell's row-mate) and report the share of replications whose MLE is still
-    exactly zero.
+    cell's row-mate) and report the share of replications in which EM at the
+    bootstrap stopping rule (Baum-Welch to tol 1e-6 or 400 iterations, a cell
+    below 1e-8 counted as zero) still returns zero. That rule undercounts exact
+    zeros of the maximum-likelihood estimate; scripts/a31_evidence.py ("power"
+    and "power_em") decides them at convergence.
     """
     mu = np.asarray(params["mu"], dtype=float)
     sigma = np.asarray(params["sigma"], dtype=float)
@@ -614,7 +623,7 @@ def residual_battery(z, name: str, lb_lags=(10, 24), arch_lag: int = 12) -> dict
     denominator and the statistic loses essentially all its power.  On this
     paper's causally standardised residuals that failure mode is not
     hypothetical -- Q^2(10) = 2.4 (p = 0.99) while Q(10) on |z| is 20.6
-    (p = 0.024) and on log z^2 is 33.3 (p = 2.4e-4) on the same series.  The
+    (p = 0.024) and on log z^2 is 33.2 (p = 2.5e-4) on the same series.  The
     z^2 row alone would therefore overstate how much clustering the model
     absorbs.
     """
@@ -904,15 +913,40 @@ def _load_panel_returns(panel_path):
 
 
 def _fit_paper_hmm(r, K: int) -> GaussianHMM:
-    """Refit exactly the model analysis.py reports: same seed, starts, iterations."""
+    """Refit exactly the model analysis.py reports: same seed, starts and protocol."""
     return GaussianHMM(K=K, n_starts=HMM_N_STARTS, n_iter=HMM_N_ITER,
                        random_state=HMM_SEED_BASE + K).fit(r)
 
 
+BOOTSTRAP_BLOCKS = ("full_sample", "sub_sample", "power")
+
+
+#: What boundary_power_full_sample measures, and where the paper's figures are.
+BOUNDARY_POWER_NOTE = (
+    "Baum-Welch stopped at tol 1e-6 / cap 400 with A < 1e-8 counted as zero; this "
+    "undercounts exact zeros. The MLE at convergence is in a31_evidence.json power "
+    "(39% at 0.003, 19% at 0.01) and the comparison in power_em; the paper uses "
+    "those.")
+
+
 def run_bootstrap(out_dir, n_reps: int = 500, seed: int = 20260819,
                   n_jobs: int | None = None, multistart_check: int = 25,
-                  power_reps: int = 200) -> dict:
+                  power_reps: int = 200, blocks=BOOTSTRAP_BLOCKS) -> dict:
+    """Write output/bootstrap_hmm.json and the bootstrap tables.
+
+    ``blocks`` selects what is recomputed: "full_sample" (the archived
+    full-sample fit), "sub_sample" (the fit in summary.json) and "power"
+    (boundary power on the full-sample kernel). Blocks not selected are kept
+    from the existing bootstrap_hmm.json in ``out_dir``, which must then exist.
+    """
+    blocks = tuple(blocks)
+    unknown = set(blocks) - set(BOOTSTRAP_BLOCKS)
+    if unknown:
+        raise ValueError(f"unknown bootstrap blocks {sorted(unknown)}")
     out_dir = pathlib.Path(out_dir)
+    previous = None
+    if set(blocks) != set(BOOTSTRAP_BLOCKS):
+        previous = json.loads((out_dir / "bootstrap_hmm.json").read_text())
     full_doc = json.loads((out_dir / FULLSAMPLE_JSON).read_text())
     full, T_full = full_doc["return_K3"], int(full_doc["n_obs"])
     sub_doc = json.loads((out_dir / "summary.json").read_text())
@@ -926,28 +960,37 @@ def run_bootstrap(out_dir, n_reps: int = 500, seed: int = 20260819,
                   "sigma": np.array(sub["sigma_bps_per_hour"]) / 1e4,
                   "A": np.array(sub["A"])}
 
-    res_full = bootstrap_hmm(params_full, T=T_full, n_reps=n_reps, seed=seed,
-                             n_jobs=n_jobs, multistart_check=multistart_check,
-                             label="full-sample")
+    if "full_sample" not in blocks:
+        res_full = previous["full_sample"]
+    else:
+        res_full = bootstrap_hmm(params_full, T=T_full, n_reps=n_reps, seed=seed,
+                                 n_jobs=n_jobs, multistart_check=multistart_check,
+                                 label="full-sample")
     res_full["source"] = FULLSAMPLE_JSON
     res_full["A_provenance"] = (
         "The archived full-sample summary stores only diag(A) and the stationary "
-        "distribution. The full kernel is exactly identified by those two plus the "
-        "boundary estimate A_12 = 0 (in the archive's mu-ascending order) and is "
-        "reconstructed here by "
+        "distribution. With the high-to-low cell A_12 (the archive's mu-ascending "
+        "order) set to zero, as the original fit printed it to three decimals, the "
+        "full kernel is exactly identified by those two and is reconstructed here by "
         "reconstruct_transition_matrix(); the same routine reproduces the archived "
         "sub-sample kernel to machine precision from its diagonal and stationary "
         "distribution alone (tests/test_diagnostics.py::test_reconstruction_"
         "recovers_archived_subsample_kernel).")
 
-    res_sub = bootstrap_hmm(params_sub, T=T_sub, n_reps=n_reps, seed=seed + 1,
-                            n_jobs=n_jobs, multistart_check=multistart_check,
-                            label="sub-sample")
-    res_sub["source"] = "summary.json (full kernel archived; no reconstruction needed)"
+    if "sub_sample" not in blocks:
+        res_sub = previous["sub_sample"]
+    else:
+        res_sub = bootstrap_hmm(params_sub, T=T_sub, n_reps=n_reps, seed=seed + 1,
+                                n_jobs=n_jobs, multistart_check=multistart_check,
+                                label="sub-sample")
+        res_sub["source"] = "summary.json (full kernel archived; no reconstruction needed)"
 
-    power = boundary_power(params_full, T=T_full, cell=(0, 1),
-                           alternatives=(0.003, 0.01), n_reps=power_reps,
-                           n_jobs=n_jobs)
+    if "power" not in blocks:
+        power = previous["boundary_power_full_sample"]
+    else:
+        power = boundary_power(params_full, T=T_full, cell=(0, 1),
+                               alternatives=(0.003, 0.01), n_reps=power_reps,
+                               n_jobs=n_jobs)
 
     payload = {
         "generated_by": "regime_engine.diagnostics.run_bootstrap",
@@ -961,8 +1004,20 @@ def run_bootstrap(out_dir, n_reps: int = 500, seed: int = 20260819,
         "full_sample": res_full,
         "sub_sample": res_sub,
         "boundary_power_full_sample": power,
+        "boundary_power_full_sample_note": BOUNDARY_POWER_NOTE,
         "software": _software(),
     }
+    if previous is not None:
+        kept = [b for b in BOOTSTRAP_BLOCKS if b not in blocks]
+        notes = dict(previous.get("block_provenance", {}))
+        for b in blocks:
+            notes[b] = (f"recomputed by run_bootstrap(blocks={list(blocks)}) under "
+                        f"the software recorded in 'software'")
+        payload["block_provenance"] = notes
+        payload["blocks_kept_from_previous_run"] = kept
+        if "full_sample" in kept:
+            payload["software_full_sample_run"] = previous.get(
+                "software_full_sample_run", previous.get("software"))
     (out_dir / "bootstrap_hmm.json").write_text(json.dumps(_jsonable(payload), indent=2))
     print(f"[saved] {out_dir / 'bootstrap_hmm.json'}")
     write_bootstrap_tables(payload, out_dir)
@@ -1039,35 +1094,7 @@ def run_diagnostics(panel_path, out_dir, msar_starts: int = 40,
         z = msar_standardised_residuals(fit, y)
         block = residual_battery(z, f"MS-AR(1) standardised residuals -- {name}",
                                  lb_lags=(1, 2, 10))
-        # Persist the whole inference block, not just the point estimates.
-        # The funding-parameter table (paper/tables/table3_funding_params.tex)
-        # quotes regime levels, autoregressive coefficients WITH standard
-        # errors, half-lives WITH intervals and the ratio WITH its delta-method
-        # interval; storing them here gives that table a machine-readable
-        # source a replicator can diff against.
-        hl = fit["half_lives"]
-        ratio = fit["half_life_ratio"]
-        block["msar"] = {
-            "window": name,
-            "regime_order": "sigma2 ascending (0 = calm, 1 = stressed)",
-            "parameterisation": "mean-adjusted: mu_bps[k] is the regime MEAN, not an intercept",
-            "n_obs": int(fit["nobs"]),
-            "logL": fit["llf"],
-            "AIC": fit["aic"],
-            "BIC": fit["bic"],
-            "mu_bps": [float(m) for m in fit["mu_const"]],
-            "sigma_bps": [float(s) for s in fit["sigma"]],
-            "phi": [float(p) for p in fit["phi"]],
-            "phi_se": [float(h["phi_se"]) for h in hl],
-            "half_life_hours": [float(h) for h in fit["half_life_hours"]],
-            "half_life_se": [float(h["half_life_se_delta"]) for h in hl],
-            "half_life_ci95": [[float(c) for c in h["half_life_ci95_delta"]] for h in hl],
-            "half_life_ratio": ratio["value"],
-            "half_life_ratio_se": ratio["se_delta"],
-            "half_life_ratio_ci95": [float(c) for c in ratio["ci95_delta"]],
-            "params": fit["param_table"],
-            "multistart": fit["multistart_diagnostics"],
-        }
+        block["msar"] = _msar_block(fit, name)
         msar_blocks.append(block)
 
     payload = {
@@ -1076,6 +1103,8 @@ def run_diagnostics(panel_path, out_dir, msar_starts: int = 40,
         "T": int(T),
         "hmm_K3_logL": float(hmm3.log_likelihood_),
         "hmm_K3_logL_archived": float(archived),
+        "hmm_K3_converged": bool(hmm3.converged_),
+        "hmm_K3_convergence": hmm3.fit_report_,
         "standardisation": (
             "z_t = (r_t - E[r_t|F_{t-1}]) / sqrt(Var[r_t|F_{t-1}]) with the "
             "one-step-ahead predicted regime distribution p~ = P(S_{t-1}|F_{t-1}) A; "
@@ -1099,34 +1128,77 @@ def _fit_msar_multistart(y, n_starts: int = 40) -> dict:
 
     The MS-AR likelihood on this series is multi-modal and its *dominant* basin
     is not its maximum, so a single-start fit is not admissible (see
-    ``hmm.fit_ms_ar1_multistart``).  We run exactly that protocol to locate the
-    winning seed, then rebuild through ``msar.fit_msar_premium`` at that seed so
-    the standard errors, half-lives and regime ordering come from the code the
-    paper already uses.  Re-running the winning seed is deterministic: the retry
-    ladder inside ``fit_ms_ar1`` only advances on a numerical failure, and by
-    construction that seed did not fail.
+    ``hmm.fit_ms_ar1_multistart``).  The scan runs once, in the guarded form of
+    ``msar.fit_msar_multistart`` (a start with a non-finite likelihood, a
+    collapsed regime variance or a singular Hessian cannot be the optimum),
+    and its winning fit is summarised by ``msar.summarise_msar_fit``, so the
+    standard errors, half-lives and regime ordering come from the code the
+    paper already uses and belong to the reported optimum by construction.
+    ``refit_logL_gap`` records the log-likelihood difference between the
+    summarised fit and the scan's optimum; with a single scan it is exactly
+    zero.
     """
-    from .hmm import fit_ms_ar1_multistart
-    from .msar import fit_msar_premium
+    from .msar import fit_msar_multistart, summarise_msar_fit
 
-    _, res, best_seed, diag = fit_ms_ar1_multistart(
+    model, res, best_seed, diag = fit_msar_multistart(
         y, n_starts=n_starts, search_reps=40, verbose=True)
-    fit = fit_msar_premium(y, seed=best_seed)
-    gap = float(fit["llf"] - float(res.llf))
-    # The two calls differ only in ``search_reps`` (40 in the multi-start scan, the
-    # fit_ms_ar1 default of 20 in fit_msar_premium), so the perturbed start values
-    # differ and the optimiser stops a fraction of a millionth of a nat apart. A
-    # gap of that size is numerical noise; anything larger means the two calls
-    # landed in different basins and the reported inference would not belong to
-    # the reported optimum.
-    if abs(gap) > 1e-2:
-        raise RuntimeError(
-            f"re-fit at the winning seed {best_seed} did not reproduce the "
-            f"multi-start optimum ({fit['llf']} vs {res.llf})")
+    fit = summarise_msar_fit(y, model, res, best_seed, diag)
     diag = dict(diag)
-    diag["refit_logL_gap"] = gap
+    diag["refit_logL_gap"] = float(fit["llf"] - float(res.llf))
     fit["multistart_diagnostics"] = diag
     return fit
+
+
+def _msar_block(fit: dict, name: str) -> dict:
+    """The machine-readable MS-AR record of one window, for ``diagnostics.json``.
+
+    Persists the whole inference block, not just the point estimates.  The
+    paper's MS-AR table (paper/tables/table3b_funding_robust.tex, written by
+    ``regime_engine.msar_tables`` from this record) quotes regime levels,
+    autoregressive coefficients WITH standard errors, half-lives WITH intervals
+    and the ratio WITH its Wald test; storing them here gives that table a
+    machine-readable source a replicator can diff against.  The keys from ``p_stay`` on come from
+    ``msar.msar_robust_inference``: the fitted chain (staying probabilities,
+    expected durations, stationary shares, p_cc + p_ss - 1), the
+    switching-adjusted half-lives and, under the Hessian, OPG and sandwich
+    covariances, standard errors, three descriptive interval forms for the
+    half-life ratio and the Wald test of phi_calm = phi_stressed that decides
+    its side of unity (``ratio_wald``), with the switching-adjusted ratio's
+    verdict and simulated interval.  ``ratio_sandwich_top_hours``
+    lists the three hours with the largest shares of the sandwich variance of
+    the ratio (``msar.ratio_sandwich_influence``; ``index`` counts into the
+    window's premium series).
+    """
+    from .msar import msar_robust_inference, ratio_sandwich_influence
+
+    hl = fit["half_lives"]
+    ratio = fit["half_life_ratio"]
+    block = {
+        "window": name,
+        "regime_order": "sigma2 ascending (0 = calm, 1 = stressed)",
+        "parameterisation": "mean-adjusted: mu_bps[k] is the regime MEAN, not an intercept",
+        "n_obs": int(fit["nobs"]),
+        "logL": fit["llf"],
+        "AIC": fit["aic"],
+        "BIC": fit["bic"],
+        "mu_bps": [float(m) for m in fit["mu_const"]],
+        "sigma_bps": [float(s) for s in fit["sigma"]],
+        "phi": [float(p) for p in fit["phi"]],
+        "phi_se": [float(h["phi_se"]) for h in hl],
+        "half_life_hours": [float(h) for h in fit["half_life_hours"]],
+        "half_life_se": [float(h["half_life_se_delta"]) for h in hl],
+        "half_life_ci95": [[float(c) for c in h["half_life_ci95_delta"]] for h in hl],
+        "half_life_ratio": ratio["value"],
+        "half_life_ratio_se": ratio["se_delta"],
+        "half_life_ratio_ci95": [float(c) for c in ratio["ci95_delta"]],
+        "params": fit["param_table"],
+        "multistart": fit["multistart_diagnostics"],
+    }
+    block.update(msar_robust_inference(fit))
+    influence = ratio_sandwich_influence(fit, top=3)
+    block["ratio_sandwich_variance"] = influence["variance"]
+    block["ratio_sandwich_top_hours"] = influence["top"]
+    return block
 
 
 def run_benchmarks(panel_path, out_dir) -> dict:
@@ -1155,6 +1227,8 @@ def run_benchmarks(panel_path, out_dir) -> dict:
             "k": int(h.n_params()),
             "T": int(T),
             "seed": HMM_SEED_BASE + K,
+            "converged": bool(h.converged_),
+            "convergence": h.fit_report_,
         }))
         # HMM-favourable alternative count: treat the initial distribution as
         # fixed at the stationary distribution rather than freely estimated.
@@ -1438,6 +1512,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     ap.add_argument("--msar-starts", type=int, default=40)
     ap.add_argument("--jobs", type=int, default=None)
     ap.add_argument("--seed", type=int, default=20260819)
+    ap.add_argument("--bootstrap-blocks", nargs="+", default=list(BOOTSTRAP_BLOCKS),
+                    choices=list(BOOTSTRAP_BLOCKS),
+                    help="bootstrap blocks to recompute; the others are kept from "
+                         "the existing bootstrap_hmm.json")
     return ap
 
 
@@ -1456,7 +1534,7 @@ def main(argv=None):
     if args.all or args.bootstrap:
         run_bootstrap(out, n_reps=args.reps, seed=args.seed, n_jobs=args.jobs,
                       multistart_check=args.multistart_check,
-                      power_reps=args.power_reps)
+                      power_reps=args.power_reps, blocks=args.bootstrap_blocks)
 
 
 if __name__ == "__main__":

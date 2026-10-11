@@ -1,11 +1,11 @@
 """The paper window has to be one definition, used everywhere.
 
-The 2 Oct 2025 -- 28 Apr 2026 slice of the premium series is what the funding
-rows of the summary-statistics table, the funding-parameter table
-(paper/tables/table3_funding_params.tex) and the funding-dynamics figure
-(fig3_funding_dynamics) are all computed on. A single definition guarantees
-that the figure is drawn on the same fit as the table beside it; re-slicing
-the series inline at each use would not.
+The 2 Oct 2025 -- 28 Apr 2026 slice of the premium series is what the premium
+and funding rows of the summary-statistics table, the MS-AR table
+(paper/tables/table3b_funding_robust.tex) and the figures of the October hour
+and the two optima are all computed on. A single definition guarantees that a
+figure is drawn on the same fit as the table beside it; re-slicing the series
+inline at each use would not.
 """
 import numpy as np
 import pytest

@@ -1,10 +1,10 @@
-"""Pin the Section 5.3 seed sentence against the artifact behind it.
+"""Pin the seed sentence of Section 6.1 against the artifact behind it.
 
-The manuscript says that across six disjoint blocks of 40 seeds the inferior
-MS-AR mode attracts between 20 and 30 of the 40 estimations, and that the
-ranking of the two modes never changes. ``output/msar_seed_variation.json``
-records those runs (``scripts/msar_seed_variation.py``); this test fails
-if the artifact and the prose part company.
+The manuscript says that each of 240 estimations, six disjoint blocks of 40
+seeds, reaches one of two maxima and that the inferior one attracts 20 to 30 of
+every 40. ``output/msar_seed_variation.json`` records those runs
+(``scripts/msar_seed_variation.py``); this test fails if the artifact and the
+prose part company.
 """
 import json
 import pathlib
@@ -26,8 +26,8 @@ def seeds():
 @pytest.fixture(scope="module")
 def sentence():
     tex = (repo_root() / "paper" / "paper.tex").read_text()
-    m = re.search(r"across six disjoint blocks of \$40\$ seeds the inferior mode attracts "
-                  r"between \$(\d+)\$ and \$(\d+)\$ of the \$40\$ estimations", tex)
+    m = re.search(r"the inferior one, \$[\d.]+\$ log-likelihood points lower, attracts "
+                  r"\$(\d+)\$ to \$(\d+)\$ of every \$40\$ estimations", tex)
     assert m, "the seed sentence is no longer in paper.tex"
     return int(m.group(1)), int(m.group(2))
 
@@ -52,3 +52,10 @@ def test_the_first_block_is_the_protocol_the_paper_reports(seeds):
     first = seeds["runs"][0]
     assert first["seed_base"] == 20260802
     assert {o["llf"]: o["count"] for o in first["optima_found"]} == {-4828.67: 24, -4808.53: 16}
+
+
+def test_the_blocks_ran_the_guarded_scan_and_it_excluded_no_start(seeds):
+    """msar.fit_msar_multistart, not the unguarded scan: no start was inadmissible."""
+    for run in seeds["runs"]:
+        assert run["excluded"] == {"non_finite_llf": 0, "variance_floor": 0,
+                                   "singular_hessian": 0}

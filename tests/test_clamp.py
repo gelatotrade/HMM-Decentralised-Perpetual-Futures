@@ -1,7 +1,7 @@
 """Clamp / funding-floor arithmetic — against the real implementation.
 
 Locks in the Hyperliquid funding mechanics, so that the modelled series stays
-the premium index rather than the censored funding rate (Section 3.2 of the
+the premium index rather than the censored funding rate (Section 2 of the
 paper).
 
     F_t = P̄_t + clamp(r - P̄_t, -5e-4, +5e-4),   r = 1e-4 per 8h
@@ -128,7 +128,7 @@ class TestPaperWindowCensoringCount:
         assert round(100 * n / len(window), 2) == 45.99
 
     def test_the_floor_hours_are_exactly_the_hours_inside_the_identity_band(self, window):
-        """Section 3.2's claim: the censored fraction is P(premium in (-4, +6))."""
+        """Section 2's claim: the censored fraction is P(premium in (-4, +6))."""
         on_floor = window["fundingRate"].to_numpy(float) == 1.25e-05
         y = window["premium"].to_numpy(float) * 1e4
         assert np.array_equal(on_floor, (y > -4) & (y < 6))

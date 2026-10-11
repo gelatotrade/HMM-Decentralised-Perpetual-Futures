@@ -1,17 +1,25 @@
 """Out-of-sample robustness for the funding half-life asymmetry.
 
-Section 5.3 of the paper reports that the calm-to-stress half-life ratio is not
+Section 6.1 of the paper reports that the calm-to-stress half-life ratio is not
 a parameter of the premium series but a property of one episode. Two exercises
 support that, and both live here.
 
+The side of unity is decided by the Wald test of phi_calm = phi_stressed
+(``msar.ratio_wald_test``): R = 1 exactly when the two coefficients are equal,
+so the test needs no delta step. The delta and Fieller intervals in each record
+are descriptive.
+
 **Rolling windows.** Re-estimating the MS-AR on overlapping windows shows where
-the asymmetry lives. Only the window containing the 10 October 2025 premium
-maximum puts the ratio above unity; the rest sit at or below it.
+the asymmetry lives. Under the Hessian covariance only the first two windows,
+the one containing the 10 October 2025 premium maximum and the one after it,
+put the ratio above unity, and most later windows put it below. Under the
+sandwich covariance no window puts it above unity.
 
 **Single-observation sensitivity.** Replacing that one hour with the second
-largest value of the series moves the full-window estimate from 11.2 to 3.0 and
-its interval comes to cover unity. The headline number is carried by a single
-observation out of 5,001.
+largest value of the series moves the full-window estimate from 11.2 to 3.0.
+The magnitude of the headline number is carried by a single observation out of
+5,001; under the sandwich covariance neither estimate is significantly above
+unity.
 
 Labelling
 ---------
@@ -30,6 +38,7 @@ import numpy as np
 
 __all__ = [
     "injection_variants",
+    "json_safe_optima",
     "VARIANT_SHORT",
     "write_rolling_table",
     "write_sensitivity_table",
@@ -37,6 +46,7 @@ __all__ = [
     "rolling_windows",
     "sensitivity_variants",
     "span_label",
+    "upper_tail_variants",
     "VARIANT_LABELS",
 ]
 
@@ -108,6 +118,50 @@ def sensitivity_variants(y: np.ndarray) -> dict[str, np.ndarray]:
     }
 
 
+#: The two upper-tail variants that separate the October 2025 hour from the rest
+#: of the upper 1%: the month whose upper-tail hours alone are capped, and the
+#: first stamp of the winsorised series' restriction to after the crash.
+UPPER_TAIL_MONTH = "2025-10"
+UPPER_TAIL_FROM = "2025-10-11 00:00"
+
+UPPER_TAIL_LABELS = {
+    "october_tail_capped": "upper 1 per cent winsorised in October 2025 only",
+    "winsorised_from_11_oct": "upper 1 per cent winsorised, from 11 October 2025",
+}
+
+
+def upper_tail_variants(y, times) -> tuple[dict[str, np.ndarray], dict]:
+    """Where the winsorised series' asymmetry comes from, and what was capped.
+
+    The cap is the series' 99th percentile, as in :func:`sensitivity_variants`.
+    ``october_tail_capped`` caps only the hours above it whose premium accrued in
+    :data:`UPPER_TAIL_MONTH` (stamp minus one hour), the maximum among them;
+    ``winsorised_from_11_oct`` is the winsorised series from the stamp
+    :data:`UPPER_TAIL_FROM` on. The facts record the cap and how many hours it
+    sets, in that month and outside it.
+    """
+    import pandas as pd
+
+    y = np.asarray(y, dtype=float)
+    times = pd.DatetimeIndex(times)
+    if len(times) != y.size:
+        raise ValueError("y and times differ in length")
+    cap = float(np.quantile(y, 0.99))
+    over = y > cap
+    month = np.asarray((times - pd.Timedelta(hours=1)).strftime("%Y-%m") == UPPER_TAIL_MONTH)
+    after = np.asarray(times >= pd.Timestamp(UPPER_TAIL_FROM, tz="UTC"))
+    winsorised = np.minimum(y, cap)
+    series = {"october_tail_capped": np.where(over & month, cap, y),
+              "winsorised_from_11_oct": winsorised[after]}
+    facts = {"cap_bps": cap, "n_capped": int(over.sum()),
+             "n_capped_in_month": int((over & month).sum()),
+             "n_capped_outside_month": int((over & ~month).sum()),
+             "maximum_in_month": bool(month[int(np.argmax(y))]),
+             "month": UPPER_TAIL_MONTH, "from_stamp": UPPER_TAIL_FROM,
+             "T_from": int(after.sum())}
+    return series, facts
+
+
 def injection_variants(y, value: float, positions) -> dict[str, np.ndarray]:
     """Copies of ``y`` with the observation at each position overwritten by ``value``.
 
@@ -169,8 +223,8 @@ ROLL_STEP = 450
 
 #: The paper's own multi-start protocol. The MS-AR likelihood is bimodal and its
 #: dominant attractor is not its maximum, so a reduced start count here would
-#: report a different mode from the funding-parameter table
-#: (paper/tables/table3_funding_params.tex) and the comparison would be
+#: report a different mode from the paper's MS-AR table
+#: (paper/tables/table3b_funding_robust.tex) and the comparison would be
 #: meaningless.
 N_STARTS = 40
 SEARCH_REPS = 40
@@ -188,6 +242,18 @@ def _significance(ci) -> str:
     return "ns"
 
 
+def json_safe_optima(optima):
+    """The multi-start optima with a non-finite log-likelihood written as ``None``.
+
+    A start can end at a non-finite likelihood without raising; it is kept in
+    the record, but as ``null`` rather than as a NaN token that strict JSON
+    parsers reject.
+    """
+    if optima is None:
+        return None
+    return [dict(o, llf=float(o["llf"]) if np.isfinite(o["llf"]) else None) for o in optima]
+
+
 def fit_window(y, *, n_starts: int = N_STARTS, search_reps: int = SEARCH_REPS,
                label: str = "") -> dict:
     """Fit the MS-AR on one premium slice and return the labelled ratio record.
@@ -197,8 +263,21 @@ def fit_window(y, *, n_starts: int = N_STARTS, search_reps: int = SEARCH_REPS,
     :mod:`regime_engine.msar`, the labels here from ``sigma2`` -- so a mismatch
     means the regime ordering has drifted between the two and the record would
     otherwise be silently mislabelled.
+
+    The record also carries the multi-start protocol behind the estimate
+    (``optima_found``, ``failures``, ``best_seed``, ``seed_base`` and the
+    ``excluded`` starts of the guarded scan, ``msar.fit_msar_multistart``) and
+    the keys of :func:`regime_engine.msar.msar_robust_inference`: staying
+    probabilities, expected durations, switching-adjusted half-lives and their
+    ratio, and under the Hessian, OPG and sandwich covariances the ratio's
+    standard error, its linear, log-scale and Fieller intervals, and the Wald
+    test of phi_calm = phi_stressed that decides its side of unity.
+
+    ``ci95`` and ``significance`` are the Hessian linear delta interval and
+    its side, the columns of table8_rolling and table9_sensitivity; the
+    verdict is ``inference[cov]["ratio_wald"]``.
     """
-    from .msar import fit_msar_premium
+    from .msar import fit_msar_premium, msar_robust_inference
 
     y = np.asarray(y, dtype=float)
     res = fit_msar_premium(y, n_pad=len(y), n_starts=n_starts,
@@ -214,7 +293,8 @@ def fit_window(y, *, n_starts: int = N_STARTS, search_reps: int = SEARCH_REPS,
             )
 
     ci = block.get("ci95_delta")
-    return {
+    ms = res.get("multistart") or {}
+    rec = {
         "label": label,
         "T": int(len(y)),
         "tau_calm": check["tau_calm"],
@@ -226,8 +306,14 @@ def fit_window(y, *, n_starts: int = N_STARTS, search_reps: int = SEARCH_REPS,
         "sigma2": [float(v) for v in np.asarray(res["sigma2"], dtype=float)],
         "phi": [float(v) for v in np.asarray(res["phi"], dtype=float)],
         "llf": res.get("llf"),
-        "n_distinct_optima": (res.get("multistart") or {}).get("n_distinct"),
+        "optima_found": json_safe_optima(ms.get("optima_found")),
+        "failures": ms.get("failures"),
+        "best_seed": ms.get("best_seed"),
+        "seed_base": ms.get("seed_base"),
+        "excluded": ms.get("excluded"),
     }
+    rec.update(msar_robust_inference(res))
+    return rec
 
 
 def fit_rolling(y, times, *, window: int = ROLL_WINDOW, step: int = ROLL_STEP,
@@ -305,7 +391,13 @@ def _side(significance: str) -> str:
 
 
 def write_rolling_table(payload: dict, out_dir) -> pathlib.Path:
-    """Write the rolling-window table of Section 5.3."""
+    """Write the rolling-window table of the earlier version (output/ only).
+
+    Its interval and side columns are each record's ``ci95`` and
+    ``significance``, the Hessian linear delta interval; the Wald test that
+    decides the side of unity is in ``table8b_rolling_robust``
+    (:mod:`regime_engine.msar_tables`).
+    """
     tab = pathlib.Path(out_dir) / "tables"
     tab.mkdir(parents=True, exist_ok=True)
     p = payload.get("protocol", {})
@@ -336,8 +428,23 @@ def write_rolling_table(payload: dict, out_dir) -> pathlib.Path:
     return path
 
 
+def legacy_table_dirs(out_dir) -> tuple:
+    """Where table8_rolling and table9_sensitivity go: the output directory only.
+
+    Both tables side the ratio by the Hessian linear delta interval of the earlier
+    version. The paper prints table8b_rolling_robust and table9b_sensitivity_robust
+    (regime_engine.msar_tables), whose verdict is the Wald test, so these two stay
+    as artifacts and are not copied to paper/tables/.
+    """
+    return (pathlib.Path(out_dir),)
+
+
 def write_sensitivity_table(payload: dict, out_dir) -> pathlib.Path:
-    """Write the single-observation sensitivity table of Section 5.3."""
+    """Write the single-observation sensitivity table of the earlier version (output/ only).
+
+    As :func:`write_rolling_table`, from the Hessian linear delta interval;
+    ``table9b_sensitivity_robust`` carries the Wald test.
+    """
     tab = pathlib.Path(out_dir) / "tables"
     tab.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -385,9 +492,10 @@ def market_context(prices, start, end) -> dict:
 def build_payload(premium_path=None, prices_path=None, *, window: int = ROLL_WINDOW,
                   step: int = ROLL_STEP, n_starts: int = N_STARTS,
                   search_reps: int = SEARCH_REPS, verbose: bool = True) -> dict:
-    """Compute every out-of-sample robustness result Section 5.3 reports."""
+    """Compute every out-of-sample robustness result Section 6.1 reports."""
     import pandas as pd
 
+    from .hmm import MSAR_SEED
     from .panel import load_paper_window_premium
     from .paths import DEFAULT_PREMIUM_FULL, PAPER_WINDOW, REPO_ROOT
 
@@ -430,6 +538,24 @@ def build_payload(premium_path=None, prices_path=None, *, window: int = ROLL_WIN
     sensitivity = fit_sensitivity(y_paper, n_starts=n_starts,
                                   search_reps=search_reps, progress=show)
 
+    say("[oos] the upper tail of the paper window: October 2025 against the rest")
+    paper_mask = (prem["time"] >= pd.Timestamp(PAPER_WINDOW[0], tz="UTC")) & (
+        prem["time"] <= pd.Timestamp(PAPER_WINDOW[1]))
+    paper_times = list(prem.loc[paper_mask, "time"])
+    tail_series, tail_facts = upper_tail_variants(y_paper, paper_times)
+    upper_tail = {"_note": (
+        "The cap of the 'winsorise_top1' variant (the paper window's 99th percentile) "
+        "and the hours it sets, by the month their premium accrued in; "
+        "october_tail_capped caps only the October 2025 ones, "
+        "winsorised_from_11_oct is the winsorised series from the stamp "
+        "2025-10-11 00:00 UTC on."), **tail_facts}
+    for key, series in tail_series.items():
+        rec = fit_window(series, n_starts=n_starts, search_reps=search_reps, label=key)
+        rec["variant"] = key
+        rec["description"] = UPPER_TAIL_LABELS[key]
+        upper_tail[key] = rec
+        show(rec)
+
     say("[oos] full extended window")
     extended = fit_window(y_all, n_starts=n_starts, search_reps=search_reps,
                           label=span_label(times))
@@ -453,10 +579,23 @@ def build_payload(premium_path=None, prices_path=None, *, window: int = ROLL_WIN
 
     return {
         "_note": (
-            "Out-of-sample robustness for Section 5.3. Every fit uses the paper's "
+            "Out-of-sample robustness for Section 6.1. Every fit uses the paper's "
             "multi-start protocol; regimes are labelled by sigma2 ascending, so "
             "ratio = tau_calm / tau_stressed and a value below unity means the "
             "stressed regime is the more persistent one."
+        ),
+        "_verdicts": (
+            "The side of unity of the ratio is the Wald test of phi_calm = "
+            "phi_stressed under each covariance, inference.<cov>.ratio_wald: the "
+            "ratio is one exactly when the two coefficients are equal, so the test "
+            "needs no delta step. Where p_cc + p_ss - 1 is significantly positive "
+            "the switching-adjusted ratio lies on the same side of unity, "
+            "inference.<cov>.ratio_switching_side. The linear, log-scale and "
+            "Fieller sets in inference.<cov>.ratio_ci95, the delta intervals of "
+            "the switching-adjusted ratio and its simulated interval "
+            "(ratio_switching_sim) are descriptive. Each record's top-level ci95 "
+            "and significance are the Hessian linear delta interval and its side, "
+            "the columns of table8_rolling and table9_sensitivity."
         ),
         "premium_series": {
             "path": str(premium_path.relative_to(REPO_ROOT)),
@@ -467,10 +606,11 @@ def build_payload(premium_path=None, prices_path=None, *, window: int = ROLL_WIN
         "paper_window": {"start": PAPER_WINDOW[0], "end": PAPER_WINDOW[1],
                          "T": int(len(y_paper))},
         "protocol": {"n_starts": n_starts, "search_reps": search_reps,
-                     "window": window, "step": step},
+                     "window": window, "step": step, "seed_base": MSAR_SEED},
         "rolling": rolling,
         "extended_window": extended,
         "sensitivity": sensitivity,
+        "upper_tail": upper_tail,
         "injection": injection,
     }
 
@@ -501,14 +641,9 @@ def main(argv=None) -> int:
     path = write_artifact(payload, args.out)
     print(f"[oos] wrote {path}")
 
-    from .paths import DEFAULT_OUT, REPO_ROOT
+    from .paths import DEFAULT_OUT
 
-    # Both tables are fully reproducible from the shipped premium series, so the
-    # manuscript copies are generated too rather than maintained by hand. That is
-    # unlike table1_model_selection.tex, whose K=2 row was fitted on full-window
-    # hourly returns that the candle endpoint no longer serves, so it cannot be
-    # regenerated from the shipped data.
-    for dest in (pathlib.Path(args.out or DEFAULT_OUT), REPO_ROOT / "paper"):
+    for dest in legacy_table_dirs(pathlib.Path(args.out or DEFAULT_OUT)):
         for writer in (write_rolling_table, write_sensitivity_table):
             print(f"[oos] wrote {writer(payload, dest)}")
     return 0

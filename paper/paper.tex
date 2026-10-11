@@ -3,17 +3,14 @@
 % --- Page geometry --------------------------------------------------------
 \usepackage[a4paper, top=2.0cm, bottom=2.0cm, left=2.6cm, right=2.6cm]{geometry}
 
-% --- Math, symbols, theorems ---------------------------------------------
-\usepackage{amsmath,amssymb,amsthm,mathtools,bm}
-\usepackage{thmtools}
+% --- Math, symbols --------------------------------------------------------
+\usepackage{amsmath,amssymb,mathtools,bm}
 
 % --- Graphics, tables, floats --------------------------------------------
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{caption}
 \captionsetup{font=small,labelfont=bf,labelsep=period}
-\usepackage{subcaption}
-\usepackage{float}
 \usepackage{array}
 
 % Float placement. The defaults reserve so much of a page for text that a
@@ -23,11 +20,11 @@
 \renewcommand{\topfraction}{0.92}
 \renewcommand{\bottomfraction}{0.75}
 \renewcommand{\textfraction}{0.06}
-\renewcommand{\floatpagefraction}{0.75}
+\renewcommand{\floatpagefraction}{0.9}
 % Pages holding only floats start at the top instead of spreading the floats apart.
 \makeatletter
 \setlength{\@fptop}{0pt}
-\setlength{\@fpsep}{14pt plus 4pt}
+\setlength{\@fpsep}{12pt plus 4pt}
 \setlength{\@fpbot}{0pt plus 1fil}
 \makeatother
 \setcounter{topnumber}{3}
@@ -37,24 +34,26 @@
 % --- Bibliography & references -------------------------------------------
 \usepackage[numbers,sort&compress,square]{natbib}
 \usepackage[svgnames]{xcolor}
-\usepackage[hyperfootnotes=false]{hyperref}
-\hypersetup{colorlinks=true, citecolor=black, linkcolor=black, urlcolor=black,
-  pdfauthor={Gregor Albiez},
-  pdftitle={Same Formula, Different Signal: Funding-Rate Censoring and Regime Dynamics in Decentralised Perpetual Futures},
-  pdfsubject={Funding-rate censoring and regime dynamics in perpetual futures},
-  pdfkeywords={funding rates; censoring; perpetual futures; regime switching; hidden Markov models; Hyperliquid; Binance; Bybit; Hamilton filter}}
-
-% --- Typography & spacing ------------------------------------------------
-\usepackage[protrusion=true,expansion=false]{microtype}
-\usepackage{titling}
 \usepackage{titlesec}
 \titleformat{\section}{\large\bfseries}{\thesection}{0.7em}{}
 \titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
-\setlength{\parskip}{4pt}
+% Unnumbered sections get an anchor, so their outline entries land on them.
+\titleformat{name=\section,numberless}{\large\bfseries}{}{0pt}{\phantomsection}
+\usepackage[hyperfootnotes=false]{hyperref}
+\hypersetup{colorlinks=true, citecolor=black, linkcolor=black, urlcolor=black,
+  pdfauthor={Gregor Albiez},
+  pdftitle={Same Formula, Different Signal: Funding-Rate Censoring and the Premium Gap between Hyperliquid and Centralised Perpetuals},
+  pdfsubject={Funding-rate censoring and the premium gap between Hyperliquid, Binance and Bybit perpetuals},
+  pdfkeywords={funding rates; censoring; perpetual futures; premium index; Hyperliquid; Binance; Bybit; regime switching; hidden Markov models}}
+
+% --- Typography & spacing ------------------------------------------------
+\usepackage[protrusion=true,expansion=false]{microtype}
+% Month names are not split inside dates.
+\hyphenation{January February March April May June July August September October November December}
+\setlength{\parskip}{3pt}
 \setlength{\parindent}{16pt}
 
 % --- Macros --------------------------------------------------------------
-\newcommand{\R}{\mathbb{R}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Prob}{\mathbb{P}}
 \newcommand{\Var}{\operatorname{Var}}
@@ -62,10 +61,13 @@
 \newcommand{\MSAR}{\textsc{ms-ar}}
 \newcommand{\given}{\mid}
 \newcommand{\Filt}{\mathcal{F}}
+\newcommand{\taucalm}{\tau_{\text{calm}}}
+\newcommand{\taustr}{\tau_{\text{stressed}}}
+\newcommand{\Rsw}{R^{\text{sw}}}
 
 \title{\Large\bfseries Same Formula, Different Signal:\\[0.3em]
-       \large Funding-Rate Censoring and Regime Dynamics\\ in Decentralised Perpetual Futures}
-\author{Gregor Albiez\thanks{MSc Finance. Email: \href{mailto:gregor.albiez@students.fhnw.ch}{\nolinkurl{gregor.albiez@students.fhnw.ch}}. GitHub: \href{https://github.com/gelatotrade}{gelatotrade}.}\\[0.45em]
+       \large Funding-Rate Censoring and the Premium Gap\\ between Hyperliquid and Centralised Perpetuals}
+\author{Gregor Albiez\thanks{MSc Finance student. Email: \href{mailto:gregor.albiez@students.fhnw.ch}{\nolinkurl{gregor.albiez@students.fhnw.ch}}. ORCID: \href{https://orcid.org/0009-0006-6036-4932}{0009-0006-6036-4932}.}\\[0.45em]
   \normalsize School of Business, University of Applied Sciences and Arts\\
   \normalsize Northwestern Switzerland (FHNW), Basel}
 \date{October 2026}
@@ -74,304 +76,275 @@
 \maketitle
 
 \begin{abstract}
-\noindent Hyperliquid, Binance and Bybit set perpetual funding by the same rule, which pays exactly an interest floor of $0.01\%$ per eight hours whenever the premium lies inside a $10$ bp band. Over 2 October 2025 to 28 April 2026 the same formula sends different signals: $46.0\%$ of Hyperliquid's $5{,}001$ hourly settlements sit exactly on the floor, and $48.4\%$ at the exchanges' settlement hours, against $5.9\%$ on Binance and $7.7\%$ on Bybit. The cause is where the premiums sit --- the exchanges' just below the band, Hyperliquid's across its lower edge with a long tail into it --- and the gap persists over the five months that follow, $51.7\%$ against $10.9\%$ and $7.9\%$. Hyperliquid's headline rate is censored about half the time; its premium, not its rate, carries the signal.
+\noindent Hyperliquid, Binance and Bybit set perpetual funding by one rule: while the averaged premium lies in a 10~bp band, funding equals an interest rate of $0.01\%$ per eight hours, and a settlement reveals the premium only as that band. From 2~October 2025 to 28~April 2026, $46.0\%$ of Hyperliquid's hourly BTC settlements sit at that rate, against $5.9\%$ on Binance and $7.7\%$ on Bybit. From 11~December 2023 to 30~September 2026 the shares are $55.2\%$, $23.8\%$ and $27.3\%$ for BTC and $52.0\%$, $23.1\%$ and $28.3\%$ for ETH; taken together, the two quarters in which the exchanges' premiums were positive reverse the ordering. Matched hour by hour with the exchanges' own premium indices, Hyperliquid's BTC premium lies a median 2.2~bps above both (ETH 1.7), in four hours out of five and in every quarter. For BTC the gap persists but varies: 3.8~bps in 2024, 3.0 to 3.1 in 2025, 0.3 to 0.5 in 2026Q1 and 2026Q2 and 1.3 to 1.5 in 2026Q3. By a Shapley split it accounts for about all of the difference in shares from 2024Q3 to 2025Q4, but for less than half in 2026Q1 and 2026Q2 (ETH: $55\%$ to $70\%$), when all three median premiums lay below the band and dispersion mattered more. Cross-venue comparisons of positioning should therefore use premiums, with their constructions in view, not headline rates. A two-state Markov-switching AR(1) on the premium reverts faster under stress only around October 2025: allowing for switching, the half-life ratio is 1.5, not significantly different from one under a misspecification-robust covariance that one hour of the 10~October crash dominates, and later data reverse it. A three-state Gaussian hidden Markov model separates hourly volatility into $14.6\%$, $33.3\%$ and $88.4\%$ annualised states and estimates the direct move from the high to the low state at zero to three decimals, as do its fits to simulated single-regime Student-$t$ GARCH paths. All results are descriptive.
 
-Fitted to that premium, a two-state Markov-switching AR(1) reverts in $36$ hours when calm and $3.2$ under stress, a ratio of $11$ with a $95\%$ interval of $[3, 19]$. One hour carries its significance. Replacing the crash hour of 10 October 2025 with the next largest observation leaves $3.0$ on an interval covering unity, only one of fourteen rolling windows lies significantly above unity, and the five months after the sample reverse the ordering, at $0.23$, its $95\%$ interval ending at $0.49$. The premium likelihood also has a dominant basin that is not its maximum: $24$ of $40$ estimations settle there and report a ratio of $25$. On returns, a three-state Gaussian \HMM\ separates hourly volatility into $14.6\%$, $33.3\%$ and $88.4\%$ annualised states, and the estimated probability of a direct exit from the high state to the low is zero, with a $95\%$ bound of $0.3\%$ per hour. All results are descriptive.
-
-\noindent\textbf{Keywords:} funding rates; censoring; perpetual futures; regime switching; hidden Markov models; Hyperliquid; Binance; Bybit; Hamilton filter.
+\medskip
+\noindent\textbf{Keywords:} funding rates; censoring; perpetual futures; premium index; Hyperliquid; Binance; Bybit; regime switching; hidden Markov models.
 
 \noindent\textbf{JEL:} C22, C58, G12, G13.
 \end{abstract}
 
 % =========================================================================
-\newpage
 \section{Introduction}\label{sec:intro}
 
-Perpetual futures dominate cryptocurrency derivatives, with daily volumes above \$100 billion in 2022, two to three times spot turnover \citep{he2022perp}, and decentralised venues, Hyperliquid foremost, have become structurally significant. Having no expiry, a perpetual is tied to its index by a recurring funding payment between longs and shorts, set from an averaged premium \citep{ackerer2024,hyperliquid_funding_docs}. Hyperliquid, Binance and Bybit compute it with the same rule, and inside a band of premia that rule pays exactly the interest rate, so the published rate stops moving with the market (Figure~\ref{fig:censoring}a). How often that happens decides whether the headline rate can be read as a signal at all.
+Perpetual futures are the most traded cryptocurrency derivatives \citep{he2022perp}, and decentralised venues, Hyperliquid foremost \citep{lau2026carry}, now trade them at scale. Having no expiry, a perpetual is tied to its index by a recurring funding payment between longs and shorts, set from the contract's averaged premium over its index \citep{ackerer2024,hyperliquid_funding_docs}. Hyperliquid, Binance and Bybit compute that payment with one rule, which pays exactly an interest rate whenever the averaged premium lies inside a band 10~bps wide. Inside the band the published rate stops moving with the market. How often a venue's rate sits there decides whether its headline funding can be read as a signal of positioning, and whether funding compared across venues compares like with like.
 
-Funding has a literature on the carry and basis side. \citet{schmeling2025crypto} read crypto carry as compensation for the limits to arbitrage that anchor perpetuals to spot, \citet{makarov2020trading} document the frictions segmenting these markets, \citet{alexander2020bitmex} study price discovery on the first large perpetual venue, \citet{werapun2026funding} compare funding arbitrage across centralised and decentralised exchanges, and \citet{hugonnier2025clamp} model perpetual pricing with the clamp explicitly and report a bimodal distribution of perpetual prices on Binance that they attribute, tentatively, to it. Regime detection in Bitcoin returns is well studied \citep{giudici2020,koki2022bitcoin,machimbo2025}: volatility clusters and breaks \citep{ardia2019}, tails are heavy \citep{koki2022bitcoin} and activity moves with returns \citep{koutmos2018}, which the Markov-switching framework of \citet{hamilton1989} and the hidden Markov machinery of \citet{rabiner1989} capture with a few latent states. \citet{zhivkov2026temporal} apply Bai--Perron tests to rolling cross-exchange integration statistics across 26 venues and find no discrete structural breaks, and a companion paper documents a two-tiered funding market \citep{zhivkov2026funding}; their object is an integration statistic tested for breaks, ours a latent-state decomposition of one venue, but a reader should know that a study on overlapping data finds no breaks where we find states.
+Funding has a literature on carry, basis and, increasingly, the rule itself. \citet{schmeling2025crypto} trace the large and volatile basis of crypto futures to trend-chasing demand for leverage meeting limited arbitrage capital, \citet{makarov2020trading} document the frictions that segment crypto markets, and \citet{alexander2020bitmex} study price discovery on the first large perpetual venue. \citet{werapun2026funding}, \citet{chen2024perpetual} and \citet{erez2026venues} compare funding, its mechanisms and its arbitrage across centralised and decentralised venues, \citet{erez2026timing} show how the timing of funding shapes no-arbitrage bounds on two decentralised venues, and \citet{lau2026carry} finds Hyperliquid's funding about $7\%$ a year above Binance's and Bybit's over three years. \citet{zhivkov2026funding,zhivkov2026temporal} correlate and Granger-test the funding rates of 26 centralised and decentralised venues, Hyperliquid, Binance and Bybit among them, between November 2025 and January 2026, and find funding less correlated between decentralised venues and the exchanges than among the exchanges, a two-tier market in their reading. Pricing models treat the clamp explicitly \citep{hugonnier2025clamp,he2022perp}, \citet{kim2025funding} derive funding rates that keep a perpetual's price anchored to its target, also when the rate is averaged over the past eight hours, and \citet{hewangzhang2026} argue that averaging and the rule's flat and capped regions separate the nominal funding template from the funding delivered at settlement. Counting settlements at the rule's flat value has precedents: \citet{he2022perp} find $41.7\%$ of Binance's BTC settlements at the interest rate over 2020--2024, \citet{ahmed2026event} report a mass at the formula point on centralised exchanges but not on dYdX, whose funding carries no interest component, and in a companion study over February 2025 to February 2026 find Hyperliquid's funding distribution clustering with the exchanges' rather than with dYdX's \citep{ahmed2026interest}; \citet{lim2026rarely,lim2026inaction} counts $73\%$ of Kalshi's settlements exactly at zero, with Bybit's BTC premium, at a mean of about $-4.7$~bps over five weeks, as the offshore comparison. On the regime side, hidden Markov and Markov-switching models of Bitcoin returns \citep{giudici2020,koki2022bitcoin,machimbo2025,ardia2019} build on \citet{hamilton1989} and \citet{rabiner1989}.
 
-We make three contributions, all descriptive and in-sample. First, a measurement: one rule pins the headline rate to the floor in $46.0\%$ of Hyperliquid's hours and in $5.9\%$ and $7.7\%$ of Binance's and Bybit's settlements, because the exchanges' premiums sit just below the band while Hyperliquid's straddles its edge (Section~\ref{ssec:clamp}). Headline funding compared across venues therefore mixes censoring with differences in premium, and on Hyperliquid the premium is the object to model. Second, a joint regime description of the return and premium processes of one decentralised perpetual, whereas the regime literature rests almost entirely on spot prices at centralised venues: three hourly volatility states whose direct move from high to low is estimated at zero, on the boundary, and bounded below $0.3\%$ per hour (Section~\ref{sec:returns}), and a premium whose apparent asymmetry in mean reversion belongs to a single episode, the crash hour of 10 October 2025 (Section~\ref{sec:funding}). Third, a caution that travels: the premium likelihood is multi-modal, and its most frequent optimum, which a single estimation reports reliably enough to look converged, is not its maximum (Figure~\ref{fig:optima}). Figure~\ref{fig:windows} maps the windows and data behind every result.
+We make three contributions, all descriptive. First, we measure the censoring exactly, from the venues' decimal settlements, for a decentralised venue and two exchanges over common windows: the 2~October 2025 to 28~April 2026 window of our regime models, and the whole period since Hyperliquid adopted the exchanges' clamp, 11~December 2023 to 30~September 2026, for BTC and ETH (Section~\ref{sec:censoring}). Hyperliquid is censored far more often than either exchange in most months, but not in all: its share fell below both exchanges' in four months for BTC and three for ETH, mostly in 2024, in each of which $41\%$ to $75\%$ of its hours lay above the band; taken together, the two quarters in which the exchanges' premiums were positive reverse the ordering. Second, we measure the premium gap behind that ordering, hour by hour and with each venue's own premium construction, and split the difference in censored shares into the gap's location, the averaging window and the premiums' dispersion (Section~\ref{sec:gap}). Third, we describe the regime dynamics of Hyperliquid's premium, with a misspecification-robust (sandwich) covariance beside the Hessian and switching-adjusted half-lives, and of its returns, and report two cautions that travel: an asymmetry in mean reversion that belongs to one episode, estimated on a likelihood whose most frequent optimum is not its maximum, and a boundary zero in a hidden Markov kernel that a single-regime GARCH process produces as well (Section~\ref{sec:regimes}).
 
-% =========================================================================
-\section{Econometric Framework}\label{sec:framework}
-
-\subsection{Gaussian Hidden Markov Model on Returns}\label{ssec:hmm}
-
-Let $r_t$ be the hourly log-return and $S_t\in\{1,\dots,K\}$ a latent state. The Gaussian \HMM\ has the joint law
-\begin{equation}\label{eq:hmm-joint}
-  \Prob(r_{1:T},S_{1:T}\given\theta) \;=\; \pi_{S_1}\, b_{S_1}(r_1)\,\prod_{t=2}^{T} A_{S_{t-1},S_t}\, b_{S_t}(r_t),
-\end{equation}
-with $\pi_i = \Prob(S_1=i)$, $A_{ij}=\Prob(S_t=j\given S_{t-1}=i)$ and emission $b_k(r) = \varphi(r;\mu_k,\sigma_k^2)$. The \emph{filtered} posterior $\Prob(S_t=k\given\Filt_t)$, with $\Filt_t = \sigma(r_{1:t})$, uses only the past and is the one admissible for real-time use; the \emph{smoothed} posterior $\Prob(S_t=k\given\Filt_T)$ conditions on the whole sample and serves only as an in-sample diagnostic. We estimate by Baum--Welch from eight random starts, keep the highest likelihood, and order states by $\hat\sigma_k$ ascending --- low, moderate and high volatility --- because the means are too close to order by; Appendix~\ref{app:estimation} gives the recursions and the case against a $\mu$-ascending rule.
-
-Model selection uses BIC over $K\in\{2,3\}$, with $K^2+2K-1$ free parameters, $7$ and $14$; Section~\ref{ssec:robust} adds $K{=}4$ and $5$. A likelihood-ratio test is not available: under $K{=}2$ the third state's parameters are unidentified and the statistic has no $\chi^2$ limit \citep{davies1987,hansen1992,cho2007}, so we read the criteria as evidence, not as tests at a nominal size. Penalised-likelihood order estimation is consistent for mixtures and for finite-alphabet hidden Markov models \citep{keribin2000,gassiat2003}.
-
-\subsection{Markov-Switching AR(1) for the Funding Premium}\label{ssec:msar}
-
-For the premium $y_t$ in basis points we use the mean-adjusted two-state form of \citet{hamilton1989},
-\begin{equation}\label{eq:msar}
-  y_t - \mu_{S_t} \;=\; \phi_{S_t}\bigl(y_{t-1} - \mu_{S_{t-1}}\bigr) + \sigma_{S_t}\,\varepsilon_t,\qquad \varepsilon_t \stackrel{\text{iid}}{\sim} \mathcal{N}(0,1),
-\end{equation}
-in which $\mu_k$ is the regime \emph{level}, not an intercept, all of $(\mu_k,\phi_k,\sigma_k)$ switch, and the likelihood conditions on the pair $(S_t, S_{t-1})$. The half-life
-\begin{equation}\label{eq:halflife}
-  \tau_k = \frac{\ln 0.5}{\ln |\phi_k|}
-\end{equation}
-says in hours how long half of a premium dislocation takes to decay within regime $k$. We estimate by maximum likelihood with the Hamilton filter and the smoother of \citet{kim1994dynamic} as implemented in \texttt{statsmodels} and, because the likelihood is multi-modal (Section~\ref{ssec:msar-robust}), always from 40 estimations of 40 random initialisations each, reporting the highest terminal log-likelihood.
-
-\subsection{Conditional Moments}\label{ssec:cond-moments}
-
-With the predicted state distribution $\tilde p_{j,t} \equiv \Prob(S_{t+1}=j\given\Filt_t) = \sum_k \Prob(S_t=k\given\Filt_t)\,A_{kj}$, the one-step conditional mean and variance of returns are
-\begin{equation}\label{eq:cond-mean}
-  \E[r_{t+1}\given\Filt_t] \;=\; \sum_{j=1}^K \tilde p_{j,t}\, \mu_j \equiv \bar\mu_t,
-\end{equation}
-\begin{equation}\label{eq:cond-var}
-  \Var(r_{t+1}\given\Filt_t) \;=\; \underbrace{\sum_j \tilde p_{j,t}\,\sigma_j^2}_{\text{within-regime}} \;+\; \underbrace{\sum_j \tilde p_{j,t}\,(\mu_j - \bar\mu_t)^2}_{\text{between-regime}},
-\end{equation}
-the second term being the variance that regime uncertainty itself adds, a feature absent from single-regime stochastic-volatility models.
+Section~\ref{sec:rule} sets out the rule on the three venues and Section~\ref{sec:data} the data; Section~\ref{sec:implications} draws the implications and states the limitations, and Section~\ref{sec:conclusion} concludes.
 
 % =========================================================================
-\section{Data and Funding Mechanics}\label{sec:data}
+\section{The funding rule on three venues}\label{sec:rule}
 
-\subsection{Sample Construction}
+Hyperliquid's documentation gives the eight-hour funding rate as
+\begin{equation}\label{eq:rule}
+  F_t \;=\; \bar P_t + \operatorname{clamp}\bigl(r - \bar P_t,\, -c,\, +c\bigr),
+\end{equation}
+with $\bar P_t$ the premium index averaged over the funding interval, $r = 0.01\%$ per eight hours the interest rate, $c = 0.05\%$ the clamp and $\operatorname{clamp}(x,a,b) = \max(a,\min(b,x))$; Hyperliquid pays $F_t/8$ every hour \citep{hyperliquid_funding_docs}. Binance and Bybit apply the same $r$ and $c$ and settle every eight hours \citep{binance_funding_docs,bybit_funding_docs}. The fixed $0.01\%$ is an industry convention \citep{amirov2026anchor}, and Hyperliquid states that it adopts it for consistency with the exchanges.
 
-For the BTC perpetual we take Hyperliquid's hourly candles of traded prices and its hourly funding observations from the public endpoints \texttt{candleSnapshot} and \texttt{fundingHistory}, floored to the hour and inner-joined: $T = 5{,}001$ observations from 2 October 2025 00:00 UTC to 28 April 2026 08:00 UTC, retrieved on 28 April 2026. For Section~\ref{ssec:clamp} we add, retrieved on 6 October 2026, the funding histories and hourly premium index of the Binance and Bybit BTCUSDT perpetuals from 1 October 2025 to 30 September 2026. Beyond the estimation window, every funding series runs to the settlement stamped 1 October 2026 00:00 UTC, which pays for the final hours of 30 September. Figure~\ref{fig:windows} shows the windows and which series survive at which resolution.
+The clamp is the identity when $|r - \bar P_t| \le c$, that is, when $\bar P_t$ lies in the band $[r-c,\, r+c] = [-4, +6]$~bps, centred on $+1$~bp. There $F_t = r$ exactly: the rule pins the rate at the interest rate. Below the band the rate is $\bar P_t + c$, below $r$; above it, $\bar P_t - c$, above $r$. A settlement outside the band therefore identifies the averaged premium exactly, while one at $r$ reveals only that the premium lay in the band. As a measurement of the premium the rate is interval-censored, a case of middle censoring \citep{jammalamadaka2003} or coarse data \citep{heitjan1991}. We call such settlements censored and, as a label only, call $r$ the floor: the rate falls below it whenever the premium lies below the band, as it does in most exchange settlements (Section~\ref{sec:censoring}).
 
-The data set the window. \texttt{fundingHistory} keeps a contract's whole history, and returns an unbroken hourly BTC series from June 2023; \texttt{candleSnapshot} serves only the most recent $5{,}000$ or so candles at each interval, so it reaches some 208 days back at hourly resolution, 417 at two-hourly and 833 at four-hourly. The premium series is therefore replicable and extensible in both directions; the hourly return series is not, its first two months having left the hourly window before the panel was archived. Two-hourly candles re-retrieved in August 2026 agree bit for bit with the surviving hourly panel aggregated to two hours on all $1{,}753$ overlapping bars; they bound the return extrema of Table~\ref{tab:summary} and check the state structure in Section~\ref{ssec:robust}. Both models use the common $5{,}001$-hour window, which contains the local high of \$126{,}101 and the February 2026 trough of \$62{,}883.
+Hyperliquid has not always used this rule. Its published rates, classified record by record, settle every eight hours until 8~June 2023 and hourly since. Until 11~December 2023 they fit a $\pm 0.03\%$ clamp (a band of $-2$ to $+4$~bps), with two exceptions: from 16~June to 15~July 2023 they equal the premium alone, and a few records on 16~July 2023 fit a $\pm 0.02\%$ clamp. From the record stamped 11~December 2023 23:00~UTC they fit the exchanges' $\pm 0.05\%$ (Table~\ref{tab:construction}, note a). These rules and dates are inferred from the data; we found no announcement. Under the common rule a Hyperliquid hour is at the floor exactly when its premium lies in the band, with no exception in $24{,}577$ hours for BTC or ETH. Every long-run comparison below starts at the record of 11~December 2023 23:00~UTC.
 
-Returns are $r_t = \ln(p_t/p_{t-1})$ on the last traded price of hour $t$, not the mark price, in basis points; funding is in basis points per hour and the premium in 8-hour-equivalent basis points. Annualisation uses $\sqrt{24\cdot 365}$ for volatility and $24\cdot 365$ for funding.
+The rule is common; the premium that enters it is not (Table~\ref{tab:construction}), a point \citet{erez2026venues} make for perpetual venues in general. Hyperliquid averages premiums sampled every five seconds over one hour; Binance and Bybit average over eight hours with weights rising linearly towards settlement, Bybit with equal weights until 7~March 2024, a switch we find in its settlements. Hyperliquid's reference price is a stake-weighted median of its validators' weighted medians of spot mid prices on seven exchanges (Table~\ref{tab:construction}, note~b); the exchanges use weighted-average indices, in which Binance's spot book has the largest BTCUSDT weight on both exchanges (note~d). Impact notionals differ, and Hyperliquid margins its USDT-denominated contracts in USDC without conversion. Each of these could shift the averaged premium; we do not identify which does.
 
-\begin{figure}[!htbp]
+\begin{table}[tbp]
+  \centering
+  \caption{How the three venues build the premium that enters the common rule~\eqref{eq:rule}, BTC and ETH perpetuals, from their documentation \citep{hyperliquid_funding_docs,hyperliquid_oracle_docs,hyperliquid_contract_docs,binance_funding_docs,bybit_funding_docs,bybit_index_docs} and public APIs as retrieved on 8~October 2026; notes a and c record what the published settlements add. IMR and MMR: initial and maintenance margin rates.}
+  \label{tab:construction}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \input{tables/table13_construction.tex}
+\end{table}
+
+% =========================================================================
+\section{Data}\label{sec:data}
+
+\begin{sloppypar}\noindent Hyperliquid's two public endpoints are \texttt{fundingHistory}, which returns each settlement (eight-hourly until 8~June 2023, hourly since) with the averaged premium it was computed from, for BTC and ETH from 12~May 2023 to the settlement stamped 1~October 2026 00:00~UTC, which pays for the last hour of 30~September; and \texttt{candleSnapshot}, which returns candles of traded prices. For Binance and Bybit we take the BTCUSDT and ETHUSDT perpetuals' funding settlements and their one-minute premium-index klines, which we aggregate to the hours Hyperliquid's records cover (Appendix~\ref{app:gap}). Rates are compared as decimals parsed from the venues' strings, so `at the floor' is an exact comparison. Figure~\ref{fig:windows} maps the windows and the series.\end{sloppypar}
+
+The regime models use the estimation window, 2~October 2025 00:00 to 28~April 2026 08:00~UTC: $5{,}001$ hourly Hyperliquid settlements and $626$ settlements per exchange. The later window runs to 30~September 2026 ($3{,}736$ hours, $467$ settlements) and the long history from 11~December 2023 23:00 ($24{,}577$ hours, $3{,}073$ settlements per exchange). Hyperliquid publishes no record stamped 15~August 2024 13:00~UTC for either asset, so the long history holds one hour fewer than it spans, and the block comparison of Section~\ref{ssec:history} uses the $3{,}071$ settlement blocks with all eight hourly records under the common rule: the first settlement, 12~December 2023 00:00, averages six hours from before the switch, and the block ending 15~August 2024 16:00 lacks that hour (the Shapley split averages Hyperliquid's hours in all $3{,}073$ blocks). Funding is otherwise fully replicable, because \texttt{fundingHistory} keeps a contract's whole history; the premium series re-retrieved in August and October 2026 equals the archived panel digit for digit on all $3{,}507$ overlapping hours. Hourly prices are not: \texttt{candleSnapshot} serves only the latest $5{,}000$ or so candles at each interval, so the hours before 3~December 2025 had left its hourly window before the panel was archived. The return fit on the whole estimation window (Section~\ref{ssec:hmm}) rests on the original extract, retrieved on 28~April 2026; every other result is rebuilt from shipped data, the return-side ones on the hourly sub-period, 3~December 2025 to 28~April 2026 ($3{,}507$ hours). Two-hourly candles cover the whole estimation window and agree with the surviving hourly panel aggregated to two hours on all $1{,}753$ overlapping bars.
+
+Table~\ref{tab:summary} summarises the BTC series. Over the estimation window Hyperliquid's BTC perpetual traded between hourly closes of \$126{,}101 (6~October 2025) and \$62{,}883 (24~February 2026), as the original extract records them. The premium averaged $-3.15$~bps, the contract trading below its index for most of the window, while funding averaged $+0.059$~bps per hour, about $5.2\%$ a year, longs paying shorts: in the $46.0\%$ of hours with the premium in the band the contract paid the floor whatever its positioning.
+
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\textwidth]{figures/fig5_windows.pdf}
-  \caption{Windows and data. \textbf{Top}: BTC two-hourly close, the estimation window (2 October 2025 -- 28 April 2026) and the later window (28 April -- 30 September 2026) shaded, with the price extremes of Table~\ref{tab:summary} and the premium's maximum hour marked. \textbf{Bottom}: the windows and the series the replication package ships; hourly prices survive only from 3 December 2025.}
+  \caption{Windows and data. \textbf{Top}: the BTCUSDT perpetual on Binance, hourly close, for orientation, with the estimation window (blue) and the later window (ochre) shaded, the record from which Hyperliquid applies the exchanges' clamp (dotted) and the hour of the premium's maximum, 10~October 2025 (dashed). \textbf{Bottom}: the series the replication package ships, from first to last stamp: Hyperliquid's funding and premium (grey under its earlier rules), the exchanges' settlements (shipped from 2019 and 2020) and one-minute premium index, and Hyperliquid's two-hourly candles (grey) with the surviving hourly ones (blue) inside them.}
   \label{fig:windows}
 \end{figure}
 
-\begin{table}[!htbp]
+\begin{table}[tbp]
   \centering
-  \caption{Summary statistics for hourly observations on Hyperliquid BTC perpetual, 2 Oct 2025 -- 28 Apr 2026 ($T = 5{,}001$).}
+  \caption{Summary statistics, Hyperliquid BTC perpetual. Premium: the averaged premium of each hourly funding record, in eight-hour-equivalent bps; funding: the hourly rate. Estimation window: 2~October 2025 to 28~April 2026, $T = 5{,}001$; sub-period: 3~December 2025 to 28~April 2026, $T = 3{,}507$, the estimation-window hours whose hourly prices survive. Skewness without bias correction.}
   \label{tab:summary}
-  \begin{tabular}{lrrrrrr}
+  \small
+  \begin{tabular}{llrrrrrr}
     \toprule
-    Series & Mean & Std. dev. & Min & Median & Max & Skew \\
+    Series & Window & Mean & Std.\ dev. & Min & Median & Max & Skew \\
     \midrule
-    Log-return (bps/h)        & $-0.87$ & $50.92$ & \textdagger & $-0.27$ & \textdagger & $-0.21$ \\
-    Funding rate (bps/h)      & $0.059$ & $0.103$ & $-0.694$ & $0.111$ & $2.327$ & $+0.94$ \\
-    Premium (bps)             & $-3.15$ & $2.87$ & $-10.55$ & $-4.11$ & $23.61$ & $+1.71$ \\
-    Closing price (USD)       & $86{,}314$ & $15{,}988$ & $62{,}883$ & $87{,}678$ & $126{,}101$ & --- \\
+    Premium (bps)            & estimation & $-3.15$ & $2.87$ & $-10.55$ & $-4.11$ & $23.61$ & $1.71$ \\
+    Funding rate (bps/h)     & estimation & $0.059$ & $0.103$ & $-0.694$ & $0.111$ & $2.327$ & $0.94$ \\
+    Log-return (bps/h)       & sub-period & $-0.55$ & $50.60$ & $-367.5$ & $-0.14$ & $336.7$ & $-0.26$ \\
     \bottomrule
   \end{tabular}
-
-  \smallskip
-  \begin{minipage}{\linewidth}\footnotesize \textdagger\ Withheld. The values recorded at retrieval, $-3{,}800$ and $+3{,}421$ bps/h, are inconsistent with the standard deviation beside them: the two alone would contribute twice the sample's sum of squared deviations. Mean and standard deviation are reproduced by the fitted mixture of Table~\ref{tab:regime-params}, $-0.87$ and $50.95$ bps/h, so the extrema are in error (median and skewness of a dependent sample need not match the mixture's). The two-hourly candles bound every hourly move by the high--low range of its two-hour bar, at most $1{,}498$ bps ($14.98\%$, on 10 October 2025), excluding the recorded values by factors of $2.3$ and $2.5$. On the hourly sub-period of Section~\ref{ssec:robust} the realised range is $[-367.5, +336.7]$ bps/h.\end{minipage}
 \end{table}
 
-\subsection{The Funding Formula and the Clamp Artifact}\label{ssec:clamp}
+% =========================================================================
+\section{Censoring across venues}\label{sec:censoring}
 
-Hyperliquid's documentation specifies the 8-hour-equivalent funding rate as
-\begin{equation}\label{eq:hl-funding}
-  F_t \;=\; \bar P_t + \operatorname{clamp}\bigl(r - \bar P_t,\, -5 \cdot 10^{-4},\, +5 \cdot 10^{-4}\bigr),
-\end{equation}
-with $\bar P_t$ the premium index averaged over the preceding hour, $r = 10^{-4}$ the interest rate per eight hours and $\operatorname{clamp}(x,a,b) = \max(a,\min(b,x))$; the hourly payment is $F_t / 8$ \citep{hyperliquid_funding_docs}. Binance and Bybit use the same $0.01\%$ interest and $\pm 0.05\%$ clamp \citep{binance_funding_docs,bybit_funding_docs}, with which Hyperliquid states its rule is designed to be consistent; \citet{kim2025funding} study the design problem such a rule solves. The venues differ in schedule --- hourly against every eight hours --- and in how each builds its premium index, from its own index price and impact size, and averages it over its own settlement interval.
+\subsection{The estimation window}\label{ssec:window}
 
-Figure~\ref{fig:censoring}(a) draws the rule. Whenever $\bar P_t \in (-4, +6)$ bps --- a band centred on $+1$ bp, not on zero --- the clamp is the identity and $F_t = r$: the hourly rate is exactly $0.125$ bps/h, which we call the interest floor, although rates fall below it whenever the premium lies below the band. Hyperliquid's premium has a mean of $-3.15$ bps, just inside the band's lower edge, and $2{,}300$ of $5{,}001$ hours --- $46.0\%$ --- sit exactly on the floor; the count is exact, the floor hours being precisely those with $\bar P_t$ inside the band. The hourly schedule does not cause the share. Read every eighth hour, the series gives $44.2\%$ to $48.4\%$ by phase offset, averaging $46.0\%$; the exchanges' 00, 08 and 16 UTC stamps give the top of that range, but only one point above the hourly share after the window ($52.7\%$ against $51.7\%$, Table~\ref{tab:censoring}), differences of a few points beside a gap of forty. An eight-hour average, with a standard deviation of $2.75$ bps against $2.87$, even lands in the band more often, $48.0\%$ of the time: the schedule multiplies censored payments, not censored observations.
-
-The point mass breaks any Gaussian regime model of $F_t$: an \MSAR\ fitted to the rate returns a degenerate regime with $\hat\sigma^2$ of order $10^{-32}$ pinned to the floor and one ordinary regime with $\hat\phi = 0.81$. We therefore model the premium $\bar P_t$, which \texttt{fundingHistory} publishes beside each rate. The two series point in opposite directions (Table~\ref{tab:summary}): funding averaged $+0.059$ bps/h, about $+5.2\%$ a year, so longs paid shorts, while the premium averaged $-3.15$ bps, the contract trading below its index for much of the sample. In the $46.0\%$ of hours with the premium inside the band the contract paid the floor whatever the positioning, and a reader of the headline rate as positioning would see longs paying over a window in which the contract mostly traded below its index.
-
-\paragraph{Same formula, different signal.} Binance and Bybit settle every eight hours under the same rule, and their funding histories make the comparison exact: a settlement equals the floor exactly when the averaged premium sat inside the band, and any other settlement identifies that premium, as the settlement minus $0.05\%$ below the band or plus $0.05\%$ above it. Over the paper window Binance prints the floor in $37$ of $626$ settlements ($5.9\%$) and Bybit in $48$ ($7.7\%$), against $46.0\%$ on Hyperliquid, which still prints it $48.4\%$ of the time read at the exchanges' 00, 08 and 16 UTC stamps (Figure~\ref{fig:censoring}c, Table~\ref{tab:censoring}). No exchange settlement exceeds the floor; $94.1\%$ of Binance's and $92.3\%$ of Bybit's lie below it. The five months after the window repeat the pattern, $51.7\%$ on Hyperliquid against $10.9\%$ and $7.9\%$.
-
-The premiums explain the difference (Figure~\ref{fig:censoring}b). Recovered from their settlements, the exchanges' premiums are concentrated just below the band, with medians of $-4.75$ and $-4.82$ bps and interquartile ranges of $0.66$ and $0.60$ bp. Hyperliquid's straddles the edge --- median $-4.11$ bps, $52.5\%$ of hours below the band --- with a long tail into the band that lifts its mean to $-3.15$. The censored share is a property of where a venue's premium sits, not of the formula, which is shared, nor of when settlements are sampled, although how each venue averages its premium may contribute: an eight-hour average narrows a distribution whose mean lies below the band and so lowers the share inside it. Funding-arbitrage studies rightly use the cash flow \citep{werapun2026funding}; read as positioning, headline funding compared across venues sets a series censored half the time against ones that rarely are, and the premiums, which the rule does not censor, are the better basis, though their windows and indices differ.
-
-\begin{figure}[!htbp]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\textwidth]{figures/fig4_censoring_venues.pdf}
-  \caption{Funding-rate censoring across venues, BTC perpetuals, 2 October 2025 -- 28 April 2026. \textbf{(a)} The rule~\eqref{eq:hl-funding}: funding per eight hours against the averaged premium; inside the band $(-4, +6)$ bps it pays exactly the floor of $1$ bp. \textbf{(b)} Where each venue's premium sits: Hyperliquid's hourly average premium, and the Binance and Bybit premiums recovered exactly from their settlements. Settlements at the floor say only that the premium lay inside the band and are not drawn, so each exchange's curve integrates to its identified share. \textbf{(c)} Shares of settlements below the band, exactly at the floor, and above it: Hyperliquid hourly and read at 00, 08 and 16 UTC, and the eight-hourly settlements of Binance and Bybit.}
+  \caption{Funding-rate censoring across venues, BTC perpetuals, 2~October 2025 to 28~April 2026. \textbf{(a)} The rule~\eqref{eq:rule}: funding per eight hours against the averaged premium; inside the band $[-4, +6]$~bps it pays exactly the floor of 1~bp. \textbf{(b)} Where each venue's premium sits: Hyperliquid's hourly averaged premium, and the Binance and Bybit premiums recovered exactly from their settlements; settlements at the floor say only that the premium lay in the band and are not drawn, so each exchange's curve integrates to its identified share. \textbf{(c)} Shares of settlements below the band, at the floor and above it: Hyperliquid hourly and read at 00, 08 and 16~UTC, and the eight-hourly settlements of Binance and Bybit.}
   \label{fig:censoring}
 \end{figure}
 
-\begin{table}[!htbp]
+\begin{table}[tbp]
   \centering
-  \caption{Funding settlements exactly at the interest floor, compared as decimals, per venue and window. \emph{Below}: settlements under the floor, the premium below the band. \emph{Median} and \emph{IQR}: premium in bps, Hyperliquid's hourly average and the exchanges' recovered from settlements; floor settlements rank between those below and above the band, so the quantiles are exact. The second Hyperliquid row reads the hourly series at the exchanges' settlement stamps.}
+  \caption{Funding settlements exactly at the floor, by venue and window, BTC perpetuals, compared as decimals. \emph{Below}: settlements under the floor, the premium below the band. \emph{Median} and \emph{Quartiles}: the premium in bps, Hyperliquid's hourly average and the exchanges' recovered from their settlements; settlements at the floor rank between those below and above the band, so the quantiles are exact. The second row reads Hyperliquid's hourly series at the exchanges' 00, 08 and 16~UTC stamps.}
   \label{tab:censoring}
   \small
   \setlength{\tabcolsep}{4pt}
   \input{tables/table10_censoring_venues.tex}
 \end{table}
 
-% =========================================================================
-\section{Regime Estimation: Returns}\label{sec:returns}
+Figure~\ref{fig:censoring}(a) draws the rule: funding is flat at the floor across the band and moves one for one with the premium outside it. Over the estimation window Binance prints the floor in $37$ of $626$ settlements ($5.9\%$) and Bybit in $48$ ($7.7\%$), against $2{,}300$ of $5{,}001$ hours ($46.0\%$) on Hyperliquid (Table~\ref{tab:censoring}). No exchange settlement lies above the floor, and $94.1\%$ of Binance's and $92.3\%$ of Bybit's lie below it. The five months after the window repeat the pattern: $51.7\%$ on Hyperliquid against $10.9\%$ and $7.9\%$.
 
-\subsection{Model Selection}\label{ssec:modelsel}
+The premiums explain the difference (Figure~\ref{fig:censoring}(b)). Recovered exactly from the settlements outside the band, the exchanges' premiums are packed just below the band's lower edge, with medians of $-4.75$ and $-4.82$~bps and interquartile ranges of $0.66$ and $0.60$~bps. Hyperliquid's straddles the edge: its median is $-4.11$~bps, $52.5\%$ of its hours lie below the band, and a long tail into the band lifts its mean to $-3.15$.
 
-BIC prefers $K{=}3$ to $K{=}2$ by about $217$ points (Table~\ref{tab:modelsel}): the third state's likelihood gain outweighs its seven extra parameters. We read the difference as evidence, not as a test at a nominal size, and attach no Bayes-factor reading to its magnitude \citep{kass1995bayes}.
+The hourly schedule does not cause the difference. Read every eighth hour, Hyperliquid's series is at the floor in $44.2\%$ to $48.4\%$ of hours depending on the phase, and in $48.4\%$ at the exchanges' 00, 08 and 16~UTC stamps; averaged over the eight hours each exchange settlement pays for, with the exchanges' weights rising towards settlement, its premium lies in the band $46.5\%$ of the time ($48.6\%$ with equal weights), against $46.0\%$ of hours. An hourly schedule multiplies censored payments, not the censored share.
 
-\begin{table}[!htbp]
+\subsection{Since December 2023}\label{ssec:history}
+
+\begin{figure}[tbp]
   \centering
-  \caption{Information criteria for $K\in\{2,3\}$ on $T=5{,}001$ hourly log-returns.}
-  \label{tab:modelsel}
-  \input{tables/table1_model_selection.tex}
+  \includegraphics[width=\textwidth]{figures/fig10_long_history.pdf}
+  \caption{Censoring and the order of the premiums since December 2023, monthly. \textbf{(a, b)} Share of settlements at the floor: Hyperliquid hourly, Binance and Bybit every eight hours, BTC and ETH; the estimation window is shaded. \textbf{(c, d)} Share of eight-hour settlement blocks in which Hyperliquid's mean premium is higher than the exchange's, drawn from its lower bound (undecided blocks counted against Hyperliquid) to its upper bound (counted for it); end marks show both bounds, and a month without undecided blocks shows one mark. The partial December 2023 is left out.}
+  \label{fig:history}
+\end{figure}
+
+\begin{table}[tbp]
+  \centering
+  \caption{Funding settlements at the floor and median premiums since Hyperliquid adopted the exchanges' clamp, by asset and period. HL hourly: Hyperliquid's hourly settlements; HL 00/08/16: the same, read at the exchanges' settlement stamps. Median premium: Hyperliquid's hourly average and the exchanges' premium recovered from settlements; `in band' marks a median that falls on censored settlements. A settlement belongs to the calendar period in which its premium accrued, and to a window by its stamp, as in Section~\ref{sec:data}: from 2~October 2025 00:00 to 28~April 2026 08:00~UTC, both included, and after it to 1~October 2026 00:00; 2023 starts on 11~December, and 2026 ends on 30~September.}
+  \label{tab:history}
+  \footnotesize
+  \input{tables/table11_long_history.tex}
 \end{table}
 
-\subsection{Regime Parameters and Geometry}
+Figure~\ref{fig:history}(a,b) follows the monthly shares from January 2024, and Table~\ref{tab:history} gives them by year and half-year. Over the whole common-rule period Hyperliquid's BTC funding is at the floor in $55.2\%$ of hours, against $23.8\%$ of Binance's and $27.3\%$ of Bybit's settlements; ETH gives $52.0\%$, $23.1\%$ and $28.3\%$. The ordering is not fixed. Hyperliquid's share exceeds both exchanges' in $26$ of the $33$ full months for either asset, including every month since August 2025, but lies below both in four months for BTC (January, February and November 2024 and July 2025) and three for ETH. In those months Hyperliquid's median premium was positive, $+5.0$ to $+8.4$~bps, with $41\%$ to $75\%$ of its hours above the band, in each month a larger share than of either exchange's settlements. The exchanges' median premiums lay in the band, except in November 2024, when three of the four lay above it as well, though below Hyperliquid's.
 
-Table~\ref{tab:regime-params} reports the $K{=}3$ fit. The states separate on volatility and only on volatility: $15.6$, $35.6$ and $94.4$ bps/h, or $14.6\%$, $33.3\%$ and $88.4\%$ annualised, with bootstrap intervals of $[13.6, 15.5]$, $[31.8, 34.9]$ and $[83.0, 94.0]$ per cent that are nowhere near overlapping, and stationary masses of $20$, $60$ and $20\%$. No drift separates from zero: the largest, $\hat\mu_3 = -5.69$ bps/h, has a standard error of $3.28$ and an interval of $[-12.44, +0.27]$, so we do not call the high-volatility state one of negative expected return.
-
-\begin{table}[!htbp]
-  \centering
-  \caption{Regime parameters of the $K{=}3$ Gaussian \HMM\ on hourly log-returns. Annualised $\sigma$ uses $\sigma\sqrt{24\cdot 365}$; expected duration is $\E[\tau_k] = 1/(1-A_{kk})$. Parenthesised figures are parametric-bootstrap standard errors (Section~\ref{ssec:inference}).}
-  \label{tab:regime-params}
-  \input{tables/table2_regime_params.tex}
-\end{table}
-
-These are hourly states. Expected durations of $13.1$, $8.8$ and $3.7$ hours imply some $686$ state visits over $5{,}001$ hours, one switch about every seven, and some 270 entries into the high state in seven months: a three-bucket classifier of hourly conditional volatility, not a description of market phases. The fitted chain, with geometric durations of a few hours, does not generate the persistence that \emph{regime} and \emph{crisis} usually connote; that would need duration dependence or time-varying transition probabilities \citep{filardo1994business}.
-
-\paragraph{The transition geometry.}\label{par:funnel} Figure~\ref{fig:transitions} draws the kernel. Exits from the high state route through the moderate one ($\hat A_{32} \approx 0.27$, s.e.\ $0.030$); the direct move to the low state, $\hat A_{31}$, is estimated at exactly zero over some 270 entries into the high state. On the boundary of the parameter space this is a bound rather than a point estimate, and all $500$ bootstrap replications return zero by construction, being simulated from, and refitted starting at, a chain without that transition, so the percentile interval is degenerate. With no events in the $n \approx 1{,}000$ high-state hours the stationary mass implies, the rule of three bounds the probability at $3/n \approx 0.30\%$ per hour. A sample this long could detect that much: simulating $200$ samples from the fitted chain with $A_{31} = 0.003$ returns an exact zero in only $6.0\%$ of them (mean estimate $0.0054$, $95\%$ interval $[0.000, 0.020]$), and at $A_{31} = 0.010$ never. Volatility steps down through the intermediate level rather than collapsing, consistent with volatility clustering \citep{cont2005volatility} and with Markov-switching GARCH evidence \citep{haas2004new}; we know of no earlier report of the property for a decentralised perpetual.
-
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=0.88\textwidth]{figures/fig6_transitions.pdf}
-  \caption{Transition geometry of the $K{=}3$ return model on the estimation window: hourly transition probabilities with $95\%$ parametric-bootstrap intervals, arrow width increasing with the probability; each node gives the state's annualised volatility and expected duration. The full-sample fit archived only the diagonal of $\hat A$ and the stationary distribution; the off-diagonal probabilities are reconstructed from them with the original fit's boundary estimate $\hat A_{31} = 0$ imposed, so the zero is an input here, and the sub-period fit (Figure~\ref{fig:dist}b) estimates it independently. The bound on $\hat A_{31}$ is the rule of three over the roughly $1{,}000$ high-state hours that the stationary mass implies (Section~\ref{par:funnel}).}
-  \label{fig:transitions}
-\end{figure}
-
-\subsection{Robustness to Extreme Observations}\label{ssec:robust}
-
-Large prints on a leveraged perpetual --- liquidation cascades, oracle dislocations, thin-book wicks --- are genuine features of the market, so we do not winsorise the estimation sample; the question is whether the high-volatility state rests on a handful of them. It does not. On the hourly sub-period, 3 December 2025 to 28 April 2026 ($T{=}3{,}507$), clipping the extreme $0.1\%$ of returns, four observations, lowers the standard deviation from $50.59$ to $50.30$ bps/h and the refitted high state from $87.7\%$ to $85.4\%$ annualised (Table~\ref{tab:robust}).
-
-The sub-period fit recovers the structure, $12.9\%$, $31.0\%$ and $87.7\%$ against $14.6\%$, $33.3\%$ and $88.4\%$. The high states agree both ways --- $87.7\%$ lies inside the full sample's $[83.0, 94.0]$ and $88.4\%$ inside the sub-period's $[82.1, 93.7]$ --- while the lower two differ by $0.5$ to $0.8$ points beyond each other's intervals; $\hat A_{31} = 0$ again, and exits from the high state again route through the moderate one, with probability $0.26$. Two-hourly candles cover the whole window ($2{,}500$ bars, annualised with $\sqrt{12\cdot 365}$) and give $11.0\%$, $31.6\%$ and $88.8\%$, with a high-state mass of $21.0\%$ against $20.0\%$. Only the boundary result weakens, to $\hat A_{31} \approx 0.01$, as it must when a two-hour bar can contain a passage through the moderate state; it stays an hourly statement.
-
-\paragraph{More than three states.} On the sub-period, with 40 starts each and both larger models converging, BIC is $-28{,}356.8$ for $K{=}2$, $-28{,}533.4$ for $K{=}3$, $-28{,}557.0$ for $K{=}4$ and $-28{,}482.2$ for $K{=}5$, so $K{=}4$ wins, by $23.6$ points; the $K{=}2$ and $K{=}3$ figures reproduce the archived sub-sample fit to the second decimal. We keep $K{=}3$ although $K{=}4$ is estimable. The gain is small beside the $176.6$ points $K{=}3$ adds to $K{=}2$; $K{=}5$ adds only $7.5$ log-likelihood points to $K{=}4$, a pattern a finer discretisation of one heavy-tailed distribution would also produce; the $K{=}4$ volatilities, $11.1$, $24.8$, $55.8$ and $134.9$ bps/h, form a near-geometric ladder with ratios of $2.2$ to $2.4$ whose top rung sits where a Gaussian mixture must place mass to reach the tails; and a Student-$t$ GARCH beats the three-state model on BIC with five parameters (Section~\ref{ssec:diagnostics}). The binding constraint is the Gaussian emission, not the number of volatility levels, and more than three states in one asset have little ex-ante economic interpretation \citep{ang2012}.
-
-\subsection{Inference}\label{ssec:inference}
-
-The standard errors of Table~\ref{tab:regime-params} come from a parametric bootstrap: $500$ series simulated from the fitted chain, state paths started at $\hat\pi^\infty$, each refitted with $K{=}3$ from the generating parameters; against full multi-start refits on 25 paired replications this shortcut costs $0.055$ nats on average and moves $\hat\sigma$ by $0.014$ bps/h. Volatilities and transitions are precise, every $\hat\sigma_k$ having a coefficient of variation below $3.5\%$; the drifts are not.
-
-\subsection{Residual Diagnostics and Benchmarks}\label{ssec:diagnostics}
-
-Conditional independence given the state is testable, and worth testing, since GARCH-type clustering is the competing explanation for a three-state fit. We standardise returns by the one-step predictive moments \eqref{eq:cond-mean}--\eqref{eq:cond-var} from the \emph{filtered} posterior; the smoothed posterior conditions on $r_t$ itself and gives spurious results --- $Q(z^2)(10) = 53.3$, $p < 10^{-7}$, with near-Gaussian residuals --- shown in Table~\ref{tab:diagnostics} for contrast. Raw returns on the sub-period cluster overwhelmingly, $Q(z^2)(10) = 470.7$ and $Q(|z|)(10) = 976.0$, both $p < 10^{-90}$. The chain absorbs most of it --- $Q(z^2)(10)$ falls to $2.4$ and ARCH-LM from $270.3$ to $2.4$ --- but not all: $Q(z^2)$ has little power against ARCH when residuals are as leptokurtic as these, and the tail-robust $Q(|z|)(24) = 96.0$ still rejects. The chain also leaves heavier tails than it started with, an excess kurtosis of $14.4$ against $6.9$. The \MSAR\ residuals fail outright ($Q(10) = 42.6$, excess kurtosis $78.9$).
-
-Against benchmarks outside its family (Table~\ref{tab:benchmarks}) the three-state \HMM\ beats a single Gaussian and a Gaussian GARCH(1,1) by $1{,}422$ and $831$ BIC points but not a Student-$t$ GARCH(1,1), which wins on BIC ($-28{,}583$ against $-28{,}533$) with five parameters against fourteen while losing on AIC ($-28{,}614$ against $-28{,}620$). That winner is near-integrated, $\hat\alpha + \hat\beta = 0.99998$ against the bound of $0.99999$ imposed in estimation, so its unconditional variance is barely finite, and with $\hat\nu = 3.35$ its innovations have no finite kurtosis: it buys likelihood with tails. Both results point to a Student-$t$ or generalised-hyperbolic emission \citep{foroni2024hidden}, and the case for the regime model rests on what GARCH does not deliver: a state decomposition, a transition geometry and a state-conditional object that aligns with the funding model.
-
-\subsection{Goodness of Fit and Posteriors}
-
-Figure~\ref{fig:dist}(a) overlays the stationary mixture $\sum_k \pi_k^\infty\, \varphi(r;\hat\mu_k,\hat\sigma_k^2)$ on the sub-period histogram: the mixture tracks the body, and the high state carries almost all the mass beyond $\pm 3\hat\sigma_2$, about $\pm 100$ bps/h. Figure~\ref{fig:dashboard} follows the posteriors through time. The February 2026 decline to \$62{,}883 coincides with concentrated high-volatility mass, a move of funding off its floor and a shift of the funding posterior, but high-volatility hours recur throughout the window, as the durations imply. The state-implied volatility $\hat\sigma_t^{\text{cond}} = (\sum_k \Prob(S_t=k\given\Filt_t)\,\hat\sigma_k^2)^{1/2}$, averaged over the trailing 24 hours as realised volatility is, tracks it closely; we have not analysed the lead--lag structure between the two.
-
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig2_distributions.pdf}
-  \caption{$K{=}3$ Gaussian \HMM\ on hourly log-returns, fitted to the hourly sub-period (3 Dec 2025 -- 28 Apr 2026, $T = 3{,}507$), the window on which hourly returns survive. \textbf{(a)} Empirical density (grey) against the stationary mixture, components weighted by $\pi^\infty$; the horizontal range is truncated at the $0.5$th and $99.5$th percentiles, so the panel speaks for the body of the distribution, not its tails. \textbf{(b)} Estimated kernel $\hat A$; the zero at $(3,1)$ is the high-to-low transition of Section~\ref{par:funnel}. Reg.~$k$ is State~$k$ of Table~\ref{tab:regime-params}.}
-  \label{fig:dist}
-\end{figure}
-
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig1_regime_dashboard.pdf}
-  \caption{State-detection dashboard over the hourly sub-period, 3 Dec 2025 -- 28 Apr 2026 ($T = 3{,}507$). \textbf{(a)} Closing price, shaded by the dominant return state after a centred seven-hour median filter, which is non-causal and presentational only; panel (b) is the causal object. \textbf{(b)} Filtered posterior $\Prob(S_t = k\given\Filt_t)$ of the $K{=}3$ \HMM\ as mixed colour, blue, grey and red for the low-, moderate- and high-volatility states. \textbf{(c)} Hourly funding rate; the horizontal segments at $0.125$ bps/h are the floor of Section~\ref{ssec:clamp}, and the vertical range runs from the $0.5$th to the $99.5$th percentile with a margin and headroom above the floor, so a few extreme prints fall outside it. \textbf{(d)} Filtered posterior of the \MSAR\ on the premium re-estimated on this window, where the half-life ordering is reversed (Section~\ref{ssec:msar-robust}); it is not the fit of Table~\ref{tab:funding-params}. \textbf{(e)} 24-hour realised volatility against the 24-hour trailing mean of the state-implied conditional volatility, both annualised; the latter is a nowcast, not a forecast.}
-  \label{fig:dashboard}
-\end{figure}
+What holds in every quarter, though not in every month, is the order of the premiums. Comparing Hyperliquid's mean premium over each eight-hour settlement block with the premium the exchange's settlement identifies, or with the band when the settlement is censored, Hyperliquid's premium is higher in at least $71.0\%$ and at most $85.6\%$ of the $3{,}071$ blocks against Binance, and in $69.2\%$ to $86.6\%$ against Bybit (ETH: $68.5\%$ to $82.4\%$ and $65.4\%$ to $82.7\%$). The bounds need no assumption about the undecided blocks, in which both premiums lie in the band (Figure~\ref{fig:history}(c,d)). By quarter the lower bound never falls below one half (lowest $50.4\%$, ETH against Bybit in 2025Q1); by month the order reverses for ETH in April 2025, when Hyperliquid's premium was higher in only $32\%$ to $33\%$ of the blocks against Binance and $29\%$ to $34\%$ against Bybit.
 
 % =========================================================================
-\section{Regime Estimation: Funding Premium}\label{sec:funding}
+\section{The premium gap}\label{sec:gap}
 
-\subsection{Estimated Parameters}
+\subsection{Measurement}
 
-Table~\ref{tab:funding-params} reports the \MSAR(1) on the paper-window premium. The calm regime has $\hat\sigma_1 = 0.53$ bps and $\hat\phi_1 = 0.981$; the stressed regime has $\hat\sigma_2 = 2.68$ bps, $5.1$ times larger, and $\hat\phi_2 = 0.804$. The levels, $\hat\mu_1 = -2.78$ and $\hat\mu_2 = -3.22$ bps, sit beside the sample mean: the regimes differ in volatility and persistence, not in level. Near the unit root the half-life is steep in $\phi$ --- $\mathrm{d}\tau/\mathrm{d}\phi \approx 1{,}860$ hours per unit at $0.981$ --- so even with a standard error of $0.0037$ the calm half-life is known only to within a factor of two, $22$ to $49$ hours. $\hat\phi_1$ still separates from unity: its $t$-ratio of $-5.3$ clears the Dickey--Fuller $1\%$ value of about $-3.4$ that a test on the stationarity boundary faces.
+Since all three venues apply the same band, which of them prints the floor depends only on where its averaged premium sits. We therefore compare the premiums directly, at Hyperliquid's resolution. For each hour we average the closes of Binance's and Bybit's one-minute premium-index klines over the hour Hyperliquid's record averages and define the gap $D_t = P^{\text{HL}}_t - P^{X}_t$ in eight-hour-equivalent bps, $X$ being the exchange (Appendix~\ref{app:gap}). The construction reproduces the exchanges' own figures. For BTC, the close of the last minute of each hour equals the close of the exchange's own hourly premium-index kline, shipped in \texttt{data/interim}, in all $5{,}001$ hours of the estimation window; and from 11~December 2023 to 30~September 2026, eight-hour averages with each exchange's weights reproduce the settlements that identify the premium to a median absolute error of $0.03$~bps on Binance ($93\%$ within $0.1$~bps; ETH $0.04$~bps and $87\%$) and $0.003$~bps on Bybit (all within $0.1$~bps for both assets), once Bybit's switch from equal to rising weights on 7~March 2024 is allowed for.
 
-\begin{table}[!htbp]
+\subsection{Size, sign and persistence}
+
+\begin{figure}[tbp]
   \centering
-  \caption{\MSAR(1) parameter estimates for the funding premium $y_t$ (8h-equivalent bps). $\hat\mu_k$ is the regime \emph{level} in \eqref{eq:msar}, not an intercept; half-life follows~\eqref{eq:halflife}. Parenthesised figures are standard errors of $\hat\phi_k$, and the intervals are delta-method; Section~\ref{sec:limitations} explains why both are indicative rather than exact.}
-  \label{tab:funding-params}
-  \input{tables/table3_funding_params.tex}
+  \includegraphics[width=\textwidth]{figures/fig11_premium_gap.pdf}
+  \caption{The premium gap, Hyperliquid minus exchange, 11~December 2023 to 30~September 2026. \textbf{(a, b)} Monthly median of the hourly gap against Binance (dashed) and Bybit (dotted) with the interquartile range shaded; the open markers are the partial December 2023, and the estimation window is shaded. \textbf{(c, d)} Hourly premiums of the three venues, BTC, in a quarter in which the exchanges' premiums lay below the band and the gap's location decides (2025Q4) and in one in which they were positive (2024Q1); grey: the band, in which funding sits at the floor. The inset tables give each venue's median premium and its share of hours in the band.}
+  \label{fig:gap}
+\end{figure}
+
+\begin{table}[tbp]
+  \centering
+  \caption{The premium gap and the shares at the floor. \textbf{Panel A}: median of the hourly gap $D_t = P^{\text{HL}}_t - P^{X}_t$ (bps); 2023 runs from 11~December and 2026 to 30~September, \emph{Estim.}\ is the estimation window (2~October 2025 to 28~April 2026), and \emph{Hours $>0$} the share of hours with a positive gap over the whole span. \textbf{Panel B}: Hyperliquid's hourly share at the floor (HL), the exchange's settlement share (Exch.), their difference, and its Shapley split into location, averaging and dispersion (percentage points), with location's smallest and largest effect over the six orders; quarters are grouped by the exchange's median hourly premium $\tilde P_X$, their number in brackets, and the indented rows split the below-band group by period. Definitions in Appendix~\ref{app:gap}; ETH in Table~\ref{tab:gap-eth}, every quarter in Table~\ref{tab:gap-quarters}.}
+  \label{tab:gap}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \input{tables/table12_premium_gap.tex}
 \end{table}
 
-\subsection{The Mean-Reversion Asymmetry}
+From 11~December 2023 to 30~September 2026 Hyperliquid's BTC premium exceeded Binance's in $80\%$ of hours and Bybit's in $81\%$, by medians of $2.19$ and $2.20$~bps; for ETH the medians are $1.69$ and $1.67$~bps, in $77\%$ of hours (Table~\ref{tab:gap}, Panel~A; Figure~\ref{fig:gap}(a,b)). The quarterly median is positive in all twelve quarters for every pair, and its $95\%$ interval, from a moving-block bootstrap with one-week blocks, excludes zero in every full quarter. The gap is persistent in sign but not in size: for BTC its yearly median was $3.8$~bps in 2024, $3.0$ to $3.1$~bps in 2025 and $0.6$~bps in 2026 (to September); by quarter it fell to $0.3$ to $0.5$~bps in 2026Q1 and 2026Q2 and widened again to $1.3$ to $1.5$~bps in 2026Q3 (ETH $2.4$, above its 2025 median). For BTC, the interval of the monthly median covers zero in April and May 2026 against both exchanges under every block length, and in a few other months that differ with the block length (with one-week blocks, five full months in all against Binance and three against Bybit). Deviations of the daily mean gap from its average halve in under three days ($2.8$ for BTC against Binance; about two days around each quarter's mean), though the autocorrelation at 30~days is still $0.21$: the level itself moves slowly. For ETH the weekly mean gap was negative for four weeks from 31~March 2025 against both exchanges.
 
-The half-lives are about $36$ hours calm and $3.2$ hours under stress, a ratio of $11.2$ with a delta-method $95\%$ interval of $[3.0, 19.4]$ (Figure~\ref{fig:funding}): on this window the premium reverts an order of magnitude faster under stress. A size-of-prize mechanism would give this sign. A calm dislocation of a few basis points may not cover the fees, margin and inventory risk of the offsetting basis trade, so capital is not deployed and the dislocation decays slowly; a stressed one makes funding a first-order part of position PnL, clears those costs and is arbitraged back within hours. The argument concerns the size of the mispricing, not liquidity, which on its own would predict the opposite ordering. The specification is a state-dependent Ornstein--Uhlenbeck process. We know of no comparable estimate for a decentralised perpetual, but ours is a single-venue, single-asset point estimate and we claim no priority on its magnitude. Section~\ref{ssec:msar-robust} shows that the ordering belongs to one episode.
+The gap is not a constant offset. Over the estimation window the quantiles of Hyperliquid's eight-hour BTC block means lie $0.20$~bps below Binance's at the 5th percentile, $0.73$~bps above at the median and $4.72$~bps above at the 90th: the exchanges' premiums are packed just below the band, Hyperliquid's spread across it, and moving Hyperliquid's block means down by the difference of the two medians still leaves $34.0\%$ of them in the band, against Binance's $5.9\%$ at the floor. Pooled from December 2023, the gap is larger when the exchange's premium lies inside the band (BTC medians of $3.91$ and $3.78$~bps, against $1.69$ and $1.66$ below it), but four in five below-band hours fall in 2025 and 2026, when the gap was smaller, and within 2024 the ordering reverses ($5.05$ and $5.14$~bps below the band against $3.96$ and $3.92$ inside it). The gap does not move with realised volatility (daily rank correlations of $0.05$ to $0.06$ for BTC).
 
-\begin{figure}[!htbp]
+\subsection{What the gap accounts for}
+
+Panel~B of Table~\ref{tab:gap} splits the difference between Hyperliquid's share at the floor and an exchange's into three steps: \emph{location} (Hyperliquid's premium shifted by the quarter's median gap), \emph{averaging} (Hyperliquid's premium averaged over the exchange's eight-hour blocks with the exchange's weights) and \emph{dispersion} (the exchange's premium in place of Hyperliquid's at the same location; Appendix~\ref{app:gap}). The split depends on the order of the three steps, so we report the Shapley value with location's range over the six orders, and group quarters by where the exchange's median hourly premium $\tilde P_X$ lay.
+
+In the eight quarters in which Binance's median premium lay at or below the band's lower edge, Hyperliquid's BTC funding was at the floor in $58.1\%$ of hours against $13.2\%$ of Binance's settlements, and location accounts for $41.6$ of the $44.9$ points ($19.3$ to $65.2$ over the orders), averaging for $2.1$ and dispersion for $1.2$. Of these, in the five from 2024Q3 to 2025Q4 (all but 2024Q4, when Binance's median premium lay inside the band) location accounts for about all of the difference, $51.8$ of $50.0$ points ($42.3$ of $40.9$ with 2024Q4), but in the three of 2026 for $24.5$ of $36.2$, and for less than half in 2026Q1 and 2026Q2 (Table~\ref{tab:gap-quarters}), against $55\%$ to $70\%$ for ETH. In those two quarters the gap was $0.3$ to $0.5$~bps and the median premiums of all three venues lay below the band, so that the dispersion step, how much of each premium's distribution reached into the band, carried more; in 2026Q3 location again accounts for about all of the difference ($51.8$ of $50.2$ points). Figure~\ref{fig:gap}(c) shows a quarter in which location decides.
+
+In the two quarters in which the exchanges' premiums were positive, 2023Q4 (from 11~December) and 2024Q1, the ordering reverses: Hyperliquid's BTC share is $31.7\%$, against $44.9\%$ on Binance and $54.5\%$ on Bybit, with location negative in every order (Figure~\ref{fig:gap}(d)). Quarter by quarter the reversal holds in seven of the eight pair-quarters, BTC against Bybit in 2023Q4 being the exception; with two quarters, one of them partial, we read it as suggestive. Where an exchange's median lay inside the band but at or below zero the shares are closer, $58.3\%$ against $53.0\%$ on Binance and $62.6\%$ against $47.4\%$ on Bybit, but location's part differs: $-0.1$ of $5.3$ points against Binance ($-13.3$ to $13.5$ over the orders), $14.0$ of $15.2$ against Bybit, whose group adds 2025Q3, when its median lay $0.09$~bps inside the band. ETH shows the same reversal and closer shares, but there location exceeds the small difference, $4.0$ of $2.1$ and $11.6$ of $4.1$ points (Table~\ref{tab:gap-eth}).
+
+\subsection{Candidate sources}
+
+Why Hyperliquid's premium sits higher is not identified here. Table~\ref{tab:construction} lists the construction candidates: a median-of-medians oracle against weighted-average indices, a 20{,}000~USDC impact notional, a one-hour equal-weighted average against eight-hour rising weights (the averaging part of the split is small) and quanto margining; a different mix of traders is a further one. Two can be checked with public data. If traders priced Hyperliquid's book in USDC terms, its premium would fall one for one as USDC gains on USDT; the daily gap's slope on the daily mean of $\ln(\text{USDC}/\text{USDT})$ (Binance spot, in bps) is $-0.125$ for BTC against Binance (HAC s.e.\ $0.048$) and $-0.07$ to $-0.02$ for the other pairs, far from $-1$, and the BTC--Binance slope vanishes within quarters ($-0.037$, s.e.\ $0.038$). Hyperliquid's oracle page changed from `spot prices' to `spot mid prices' between 6~October and 10~December 2025 (Table~\ref{tab:construction}, note~b); the BTC gap against Binance averaged $3.2$~bps less in the 28~days from 10~December than in the 28~days to 6~October ($1.3$ to $3.1$~bps less for the other pairs), but among all $905$ placements of two 28-day windows with $64$~days between them, the mean moves at least as much, up or down, in $12\%$ (a fall at least as large in $9\%$; $17\%$ to $62\%$ for the other pairs), so the change can be neither excluded nor identified as a cause. The gap agrees in sign with the funding spread of \citet{lau2026carry}: a higher premium raises funding one for one outside the band and lifts it to the floor inside it.
+
+% =========================================================================
+\section{Regime dynamics}\label{sec:regimes}
+
+\subsection{The premium}\label{ssec:msar}
+
+\begin{table}[tbp]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig3_funding_dynamics.pdf}
-  \caption{Funding-premium dynamics under the \MSAR(1) of Table~\ref{tab:funding-params}. \textbf{(a)} Phase plot of $(y_{t-1}, y_t)$ in bps, coloured by the modal \emph{smoothed} regime, an in-sample diagnostic only; the lines are the regime-conditional fits $\hat\mu_k(1-\hat\phi_k) + \hat\phi_k y_{t-1}$. Both axes are truncated at the $0.5$th and $99.5$th percentiles, so the October 2025 excursion to $+23.61$ bps that identifies the stressed state falls outside the range. \textbf{(b)} Half-life per regime with delta-method intervals.}
-  \label{fig:funding}
-\end{figure}
+  \caption{The two-state \MSAR(1) of equation~\eqref{eq:msar} on the premium, estimation window, with the fitted chain and robust inference. $\hat\mu_k$ is the regime level, not an intercept. Half-life intervals transform $\hat\phi_k$'s Wald interval; an end at $\infty$ means that interval reaches a unit root. $\hat\tau^{\text{sw}}_k$ is the first hour at which the expected deviation from regime~$k$ falls to one half under the fitted chain. Side of unity: the Wald test of $\phi_{\text{calm}} = \phi_{\text{stressed}}$ at $5\%$ (n.s.: not significant); the $95\%$ sets are descriptive.}
+  \label{tab:msar}
+  \footnotesize
+  \input{tables/table3b_funding_robust.tex}
+\end{table}
 
-\subsection{Specification Robustness and the Precision of the Asymmetry}\label{ssec:msar-robust}
+Fitted to Hyperliquid's hourly rate, a two-state Markov-switching AR(1) devotes one regime to the floor, with a variance below $10^{-31}$ in each of four estimations: the censoring makes the likelihood unbounded there. We therefore model Hyperliquid's BTC premium $y_t$ in bps, with the mean-adjusted form of \citet{hamilton1989} in which the autoregressive coefficient and the variance switch as well,
+\begin{equation}\label{eq:msar}
+  y_t - \mu_{S_t} \;=\; \phi_{S_t}\bigl(y_{t-1} - \mu_{S_{t-1}}\bigr) + \sigma_{S_t}\,\varepsilon_t,\qquad \varepsilon_t \stackrel{\text{iid}}{\sim} \mathcal{N}(0,1),
+\end{equation}
+where $S_t$ is a two-state Markov chain, estimated by maximum likelihood from $40$ estimations of $40$ random initialisations each (Appendix~\ref{app:estimation}). The within-regime half-life $\tau_k = \ln 0.5/\ln|\phi_k|$ counts the hours in which half of a dislocation decays while the chain stays in regime~$k$.
 
-\paragraph{Two optima, and the frequent one is wrong.} The likelihood of \eqref{eq:msar} has two well-separated maxima on this series, and each of our $240$ estimations reaches one of them (Figure~\ref{fig:optima}). The inferior one lies $20.1$ points lower, a likelihood ratio of order $10^{8}$, yet attracts most estimations: $24$ of the paper's $40$, and across six disjoint blocks of $40$ seeds the inferior mode attracts between $20$ and $30$ of the $40$ estimations, while the ranking of the two modes never changes. It differs from the maximum by $0.13$ in $\hat\phi_2$ ($0.672$ against $0.804$) and $0.003$ in $\hat\phi_1$, which the steep half-life turns into a ratio of $24.6$ instead of the $11.2$ of Table~\ref{tab:funding-params}. \texttt{statsmodels} runs no random-start search unless asked, and even with a $40$-draw search a single estimation lands on the inferior optimum three times in five: a Markov-switching result resting on a nonlinear function of $\hat\phi$ needs a recorded multi-start protocol and a reported terminal log-likelihood. We set $K{=}2$ on interpretability and on the small number of stress episodes the window contains.
-
-\begin{figure}[!htbp]
+\begin{figure}[tbp]
   \centering
-  \includegraphics[width=0.74\textwidth]{figures/fig9_optima.pdf}
-  \caption{The two optima of the premium likelihood on the paper window. Each bar is a block of $40$ consecutive seeds (the first starts at seed $20260802$), split by the optimum each estimation reaches; the legend gives what each optimum implies.}
-  \label{fig:optima}
-\end{figure}
-
-\paragraph{Where the asymmetry lives.} The premium series can be refitted on any window (Figure~\ref{fig:october}b). On the 3 December 2025 -- 28 April 2026 sub-period the ordering reverses, $7.1$ hours calm against $24.8$ stressed, at $0.29$ with a $95\%$ interval of $[0.05, 0.52]$; $36$ of $40$ estimations reach that optimum, the other four fail to converge, and none finds a better one. On the whole series, 2 October 2025 to 30 September 2026 ($T = 8{,}737$), the original ordering returns at $4.55$, $[1.95, 7.15]$. The sub-period contains the February 2026 episode entire, including the premium minimum of $-10.55$ bps on 6 February; it lacks the maximum, $+23.61$ bps in one hour of the 10 October 2025 crash (Figure~\ref{fig:october}a), inside the two-hour bar that sets the $1{,}498$ bps bound of Table~\ref{tab:summary}. The stressed state is identified by that hour, not by the February selloff: a window excluding October does not identify the state, and one diluting it attenuates the estimate. Nor do $[3.0, 19.4]$ and $[1.95, 7.15]$ bracket the ratio: the window from the end of the estimation sample to 30 September 2026 gives an interval ending at $0.49$, disjoint from both and on the far side of unity.
-
-Fourteen overlapping windows of $2{,}500$ hours, stepped $450$, localise the effect (Figure~\ref{fig:rolling}, Table~\ref{tab:rolling}). Only the first, the one containing 10 October 2025, places its interval above unity, at $39.17$ with $[7.6, 70.8]$; two others have point estimates above one, $2.94$ and $1.11$, without separating from it, and eleven of the fourteen fall below one outright and nine of those exclude unity. The estimate falls as October leaves the window, crosses unity at the turn of the year and never returns, while the mean drawdown deepens from $21$ to $47$ per cent: one episode, then a baseline. Overlapping by $82\%$, they are fourteen views of a series holding three disjoint windows of this length, not fourteen tests, and twelve months with one drawdown support no cyclical reading.
-
-\paragraph{One observation carries the significance.} The 10 October hour is a genuine observation, not a recording error, and it stays in every main estimate, Table~\ref{tab:funding-params} included. We replace it only to measure what it carries: a two-state model can devote its high-variance state to a single extreme hour, and this one is two and a half times the next largest. Replacing it with that next largest value, $9.52$ bps, moves the paper-window ratio from $11.19$ to $3.04$ and deleting it to $1.83$, both on intervals that cover unity, because $\hat\tau_{\text{stressed}}$ moves from $3.18$ hours to $11.15$ and $18.12$ while the calm half-life barely shifts (Figure~\ref{fig:october}b, Table~\ref{tab:sensitivity}). Winsorising the upper $1$ per cent, fifty hours, still leaves $4.49$ with an interval above unity: the tail carries part of the effect, but the exclusion of unity rests on one hour in $5{,}001$.
-
-The converse is the sharper test. On the window from the end of the estimation sample to 30 September 2026 the ratio is $0.226$, $11.0$ hours calm against $48.7$ stressed, its $95\%$ interval ending at $0.49$ with the lower end left open by the delta method: there the stressed state is the persistent one. Overwriting a single hour with a synthetic $+23.61$ bps, at each quartile of that window in turn, raises it to $18.0$, $11.4$ and $4.3$ --- a factor of $19$ to $79$ on one observation in $3{,}736$. At the first point the manufactured ratio is even significant, $[1.97, 33.98]$; the other two delta-method intervals cover unity. We report these as fragility, not as estimates: one hour can manufacture an asymmetry of the headline's order, significance included, and where it falls decides how large.
-
-\begin{figure}[!htbp]
-  \centering
-  \includegraphics[width=\textwidth]{figures/fig7_october_hour.pdf}
-  \caption{The hour that carries the asymmetry. \textbf{(a)} Hourly premium, 8--13 October 2025, against the band; the hour of 10 October 22:00 UTC is the maximum of the whole series. \textbf{(b)} The half-life ratio with its $95\%$ delta-method interval on the paper window and its upper-tail variants (Table~\ref{tab:sensitivity}), on the other windows, and on the later window with one hour overwritten at each quartile; a lower end the delta method returns negative is left open (arrow).}
+  \includegraphics[width=\textwidth]{figures/fig7b_october_hour_robust.pdf}
+  \caption{The hour that sets the size of the asymmetry. \textbf{(a)} Hourly premium, 8 to 13~October 2025, against the band. \textbf{(b, c)} $R$ (filled markers) and $\Rsw$ (open diamonds) on the estimation window and its upper-tail variants, on the other windows, and on the later window with one hour set to the October maximum, under the Hessian (b) and the sandwich covariance (c). Whole series: the estimation and later windows together, 2~October 2025 to 30~September 2026 ($T = 8{,}737$). Colour and marker give the Wald test at $5\%$ (blue: $R > 1$; red: $R < 1$; grey: not significant), with its $p$-value at the right; the bars are $95\%$ Fieller sets, descriptive only, and arrows mark sets that run past the axis.}
   \label{fig:october}
 \end{figure}
 
-\begin{figure}[!htbp]
+Within regimes the premium halves in $35.6$~hours when calm and $3.2$~hours under stress (Table~\ref{tab:msar}), a ratio $R = \taucalm/\taustr$ of $11.2$. But the stressed regime lasts $2.6$~hours on average, and propagated through the fitted chain a dislocation halves after $16.3$~hours when it arises under stress and $24.5$~hours when it arises in the calm regime, a switching-adjusted ratio $\Rsw$ of $1.51$. A single-regime AR(1) on the same premium gives a half-life of $14.5$~hours; estimates elsewhere are shorter, and for other objects: a median of $3.5$~hours for the basis across 41 dYdX markets \citep{ahmed2026event} and about four hours for Hyperliquid's censored BTC funding rate, two to six hours across BTC, ETH and SOL \citep{le2026funding}.
+
+\begin{figure}[tbp]
   \centering
-  \includegraphics[width=\textwidth]{figures/fig8_rolling.pdf}
-  \caption{Rolling estimates of the half-life ratio, windows of $2{,}500$ hours stepped by $450$, at their mid-points: blue if the $95\%$ interval lies above unity, grey if it covers unity, ochre if it lies below; arrows mark lower ends the delta method leaves open. The dotted line with squares is the mean drawdown from the running price peak (right axis). Table~\ref{tab:rolling} lists the estimates.}
+  \includegraphics[width=\textwidth]{figures/fig8b_rolling_robust.pdf}
+  \caption{Rolling estimates of $R$ (filled markers) and $\Rsw$ (open diamonds) at the window mid-points, windows of $2{,}500$ hours stepped by $450$, under the Hessian (a) and the sandwich covariance (b). Colours, markers and bars as in Figure~\ref{fig:october}.}
   \label{fig:rolling}
 \end{figure}
 
-\paragraph{What the later data replicate, and what we claim.} Over the $3{,}736$ hours after the estimation window, $51.7\%$ of funding observations sit exactly on the interest floor, against $46.0\%$ inside it: the censoring persists, if anything more often. The premium's two-state structure does not: the ratio of conditional standard deviations across states falls from $5.1$ to $2.1$, the reversed half-life ordering seen through the variance rather than the persistence. The asymmetry is therefore a property of the October 2025 episode, not a parameter of the Hyperliquid BTC funding premium. Table~\ref{tab:funding-params} describes that episode, and the size-of-prize mechanism remains a candidate explanation for it, which only several such episodes could establish.
+The residuals are far from Gaussian, with an excess kurtosis of $78.9$ (Table~\ref{tab:diagnostics}), so we add the misspecification-robust sandwich covariance \citep{white1982} to the Hessian. Since, with both coefficients positive as in every fit, $R = 1$ exactly when $\phi_{\text{calm}} = \phi_{\text{stressed}}$, a Wald test of that restriction decides the side of unity for $R$ and $\Rsw$ alike (Appendix~\ref{app:estimation}). The asymmetry is significant with the Hessian ($z = 3.71$, $p < 0.001$) but not with the sandwich ($z = 1.01$, $p = 0.31$), and $76.7\%$ of the sandwich variance of $R$ comes from one hour: the record stamped 10~October 2025 23:00~UTC, whose premium fell back to $-3.13$~bps from the series' maximum of $+23.61$ an hour earlier. Both records are genuine: the maximum averages the hour, 21:00 to 22:00~UTC, in which Hyperliquid's auto-deleveraging closed some \$2~billion of positions \citep{chitra2025adl,chitra2026online,campbell2026adl}, and the 23:00 record the hour after it, in a cascade whose effects on the venue's liquidity lasted weeks \citep{lim2026sameshock,lim2026recovery}. The one-hour spike to the maximum is an additive outlier \citep{fox1972}, the kind of observation that distorts estimates of an autoregressive coefficient \citep{denby1979}, and a two-state model can devote its stressed regime to it.
+
+Figures~\ref{fig:october} and~\ref{fig:rolling} measure what the hour carries. Replacing the maximum by the next largest value, $9.52$~bps, lowers $R$ to $3.04$ (Hessian $p = 0.035$, sandwich $p = 0.30$); deleting it leaves $1.83$, significant under neither; winsorising the upper $1\%$, which caps the maximum and $49$ further hours, $40$ of them from October 2025, at $6.75$~bps, leaves $4.49$, significant under both (Table~\ref{tab:sensitivity}). The hour thus sets the size of the asymmetry, and the treatment of October's upper tail decides whether the sandwich supports what remains: capping only October's $41$ upper-tail hours leaves $3.93$ (sandwich $p = 0.036$), while from 11~October on the winsorised series shows no asymmetry ($R = 1.11$; $p = 0.79$ and $0.87$). On the hourly sub-period, which lacks October, $R$ is $0.29$, below unity with the Hessian ($p < 0.001$) but not with the sandwich ($p = 0.093$). On the five months after the window it is $0.23$, below unity under both covariances ($\Rsw = 0.54$); one hour of that later window set to $+23.61$~bps raises it to $4.3$, $11.4$ or $18.0$, depending on where it falls. Of $14$ rolling windows of $2{,}500$ hours (Table~\ref{tab:rolling}), the two earliest lie above unity with the Hessian and none with the sandwich, while six lie below it under both. The second starts on 20~October, after the hour, and still lies above unity with the Hessian ($R = 2.94$, $p = 0.031$), though not with the sandwich ($p = 0.082$). The asymmetry describes the October 2025 episode and its aftermath. A size-of-prize argument, by which dislocations large enough to pay for the offsetting trade are arbitraged faster, would give its sign; \citet{shek2026drag} finds the opposite ordering for extreme funding on Binance, and only several such episodes could tell the two apart.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics{figures/fig9_optima.pdf}
+  \caption{The two optima of the premium likelihood on the estimation window. Each bar is a block of $40$ consecutive seeds, the first starting at seed $20260802$, split by the optimum each estimation reaches; the legend gives what each optimum implies.}
+  \label{fig:optima}
+\end{figure}
+
+The likelihood is also multi-modal (Figure~\ref{fig:optima}). Each of our $240$ estimations on the estimation window reaches one of two maxima; the inferior one, $20.14$ log-likelihood points lower, attracts $20$ to $30$ of every $40$ estimations and implies $R = 24.6$. A Markov-switching result resting on a nonlinear function of $\hat\phi$ therefore needs a recorded multi-start protocol, a reported terminal log-likelihood and a test rather than an interval: over the $24$ fits of Tables~\ref{tab:rolling} and~\ref{tab:sensitivity} and both covariances, the log-scale delta interval for $R$ contradicts the Wald test in $6$ of $48$ cases, the linear one in $8$ and Fieller's set in $1$.
+
+\subsection{Returns}\label{ssec:hmm}
+
+\begin{table}[tbp]
+  \centering
+  \caption{The three-state Gaussian \HMM\ on hourly log-returns, estimation window ($T = 5{,}001$). Annualised volatility is $\hat\sigma_k$ times $\sqrt{8{,}760}$; the expected duration is $1/(1 - \hat A_{kk})$. Parenthesised figures are parametric-bootstrap standard errors from $500$ replications.}
+  \label{tab:hmm}
+  \small
+  \input{tables/table2_regime_params.tex}
+\end{table}
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/fig6_transitions.pdf}
+  \caption{Transition geometry of the three-state return model on the estimation window: hourly transition probabilities with $95\%$ parametric-bootstrap intervals, arrow width increasing with the probability; each node gives the state's annualised volatility and expected duration. The archived fit kept only the diagonal of $\hat A$ and the stationary distribution, so the off-diagonal cells are reconstructed with the high-to-low cell set to zero, as the original fit reported it to three decimals; that zero is an input here, and the bound on its arrow is the profile-likelihood bound of the hourly sub-period.}
+  \label{fig:transitions}
+\end{figure}
+
+A three-state Gaussian hidden Markov model on hourly BTC log-returns, with states ordered by volatility (Appendix~\ref{app:estimation}), separates the estimation window into $14.6\%$, $33.3\%$ and $88.4\%$ annualised volatility, with stationary masses of $20\%$, $60\%$ and $20\%$ and expected durations of $13.1$, $8.8$ and $3.7$~hours (Table~\ref{tab:hmm}): a classifier of hourly conditional volatility, not of market phases, in which no drift separates from zero. This fit stopped at $150$ iterations and cannot be refitted, since its hourly prices before 3~December 2025 are no longer served. On the sub-period, where every fit converges, stopping at $150$ iterations would change no annualised volatility by more than $0.04$ percentage points. The converged fit gives $12.8\%$, $31.0\%$ and $87.6\%$, and clipping the extreme $0.1\%$ of returns, four hours, lowers the high state to $85.4\%$ (Table~\ref{tab:robust}). Two-hourly candles over the whole estimation window give $11.0\%$, $31.7\%$ and $88.9\%$, with a high-to-low cell of $1.1\%$ per two-hour bar, as expected when a bar can contain a passage through the moderate state (the reconstructed hourly chain of Figure~\ref{fig:transitions} gives $0.7\%$ over two hours); the zero of the next paragraph is an hourly statement.
+
+Exits from the high state route through the moderate one ($\hat A_{32} = 0.27$; Figure~\ref{fig:transitions}); the direct move to the low state, $\hat A_{31}$, was zero to three decimals in the original fit. On the sub-period, where the fit converges, the estimate lies exactly on the boundary, and the profile likelihood bounds $A_{31}$ below $0.64\%$ per hour (one-sided $95\%$; $0.92\%$ two-sided), a bound that is conservative within the model ($1.0\%$ rejections at a nominal $5\%$). A zero estimate does not show the transition to be rare: with $A_{31} = 0.3\%$ per hour in the estimation-window chain, $39\%$ of $1{,}000$ simulated samples still return exactly zero, and $19\%$ at $1\%$. The zero is what three Gaussian states make of persistent volatility: fitted to $60$ paths of the Student-$t$ GARCH(1,1) of Table~\ref{tab:benchmarks}, a single-regime model, the three-state model returns $\hat A_{31} = 0$ on every one, and on $53.8\%$ of Gaussian-GARCH paths at the best of $32$ starts per path ($40.4\%$ at the eight starts). Volatility steps down through the intermediate level, consistent with volatility clustering \citep{cont2005volatility}, not with a barrier specific to this venue.
+
+The number of states is descriptive. On the sub-period, with every fit converged from about $200$ starts per $K$, BIC prefers $K{=}4$ to $K{=}3$ by $23.6$ points, while $K{=}3$ gains $176.6$ on $K{=}2$; under Gaussian emissions that the diagnostics reject, BIC counts the components a heavy-tailed, clustered distribution needs, not regimes. The four-state kernel has no direct exit from the top state to the bottom either, and its fourth level has no separate economic reading, the ground on which \citet{ang2012} advise choosing the number of regimes; we keep $K{=}3$, as in the estimation-window fit. A Student-$t$ GARCH(1,1) beats the three-state model on BIC with five parameters against fourteen (Table~\ref{tab:benchmarks}), so the hidden Markov model is a descriptive device. Figures~\ref{fig:dist} and~\ref{fig:dashboard} show the sub-period fit.
 
 % =========================================================================
-\section{Implications}\label{sec:trading}
+\section{Implications and limitations}\label{sec:implications}
 
-Neither implication is tested (Section~\ref{sec:limitations}). \emph{Position sizing.} The filtered posterior in \eqref{eq:cond-mean}--\eqref{eq:cond-var} gives a one-step conditional variance that a mean-variance rule $w_t = \E[r_{t+1}\given\Filt_t]/(\lambda \Var(r_{t+1}\given\Filt_t))$ would turn into time-varying positions without a separate volatility target. Its within-state term spans $14.6\%$ to $88.4\%$ annualised, a $6.1$-fold range; its between-state term never exceeds $0.3\%$ of the forecast variance, the state means spanning only $6.1$ bps/h, so regime uncertainty as such does not move positions for this asset, though it would for one with a larger spread of state-conditional drifts. \emph{Funding-aware execution.} Calm-regime funding is a slow carry cost and stressed-regime funding a transient, but the only available figure rests on $\hat\tau_{\text{stressed}} = 3.2$ hours, which becomes $11.15$ or $18.12$ hours if one observation changes (Table~\ref{tab:sensitivity}) and is $49$ hours on the window after April 2026 (Section~\ref{ssec:msar-robust}). Whether an execution schedule could exploit the October pattern is a backtest's question, and we do not answer it.
+Headline funding is a censored measurement of the premium, and how often it is censored depends on the venue and the market phase. Funding compared across venues, whether as a gauge of positioning or of integration \citep{zhivkov2026funding,zhivkov2026temporal}, sets a series censored about half the time against series whose censored share depends on the phase: $6\%$ to $8\%$ for BTC over the estimation window, about a quarter since December 2023, and in the first half of 2024 about as high as Hyperliquid's or higher (Table~\ref{tab:history}). The premiums, which the rule does not censor, are the better basis, read with their constructions in view (Table~\ref{tab:construction}). Funding-arbitrage studies rightly use the cash flow \citep{werapun2026funding,lau2026carry}, which the censoring does not distort. For position sizing, the filtered state probabilities give one-step conditional moments that a mean-variance rule $w_t = \E[r_{t+1}\given\Filt_t]/(\lambda \Var(r_{t+1}\given\Filt_t))$ would turn into time-varying positions. No state's drift separates from zero (Table~\ref{tab:hmm}), and drifts set to zero would give no position; a common non-zero drift $\mu$, in effect a fixed directional view, gives $w_t = \mu/(\lambda \sum_k \Prob(S_{t+1}{=}k\given\Filt_t)\,\sigma_k^2)$, which scales that view by the inverse of the one-step conditional variance: volatility timing, not a volatility target. For execution, the stressed premium regime lasts $2.6$~hours on average, and allowing for switching a dislocation halves in $16$ to $25$~hours whichever regime it starts in; whether a schedule could exploit that is a backtest's question we do not answer.
 
-% =========================================================================
-\section{Limitations}\label{sec:limitations}
-
-\emph{Scope.} Every result is in-sample and descriptive. Posteriors are evaluated at the full-sample estimate, the filtered/smoothed distinction is a property of the recursions rather than a real-time claim, and no walk-forward, backtest or transaction-cost exercise is run.
-
-\emph{External validity.} One asset on one venue: seven months of returns with a single macro drawdown and twelve months of premium containing a single funding episode, compared with two exchanges in one market phase, in which their premiums sat below the band; with persistently positive premia the ordering could change. We would not carry the parameter values to other assets, venues or periods.
-
-\emph{Inference.} The \HMM\ bootstrap conditions on the Gaussian emission, which the diagnostics reject; a block bootstrap would relax that, and the heteroskedasticity left after the state decomposition makes a Markov-switching GARCH \citep{haas2004new,ardia2019} the natural next model. The \MSAR\ standard errors come from the Hessian of a Gaussian likelihood its residuals reject badly --- excess kurtosis of $79$, a Jarque--Bera statistic more than forty times the \HMM's --- so its delta-method intervals are indicative; a sandwich or block-bootstrap covariance would be the repair, and we have not computed one. The ordering of the two point estimates, $35.6$ hours against $3.2$, does not involve the covariance, but $\hat\phi_{\text{stressed}}$ is itself set by one observation.
-
-\emph{Specification.} The three-state \HMM\ does not dominate a Student-$t$ GARCH(1,1) on BIC, and we run no encompassing test. No third premium state is tested, the nuisance-parameter problem of Section~\ref{ssec:hmm} applying here too \citep{davies1987,hansen1992}. The premium index is a within-hour average, which induces a moving-average component, so the AR(1) is misspecified and $\hat\phi$ biased; a Markov-switching ARMA(1,1) is the next step.
-
-\emph{Replication.} Every funding-side result reproduces from source; the hourly return panel's first two months do not (Data and Code Availability).
+Every result is in-sample and descriptive: posteriors use parameters estimated on the window they describe, and we run no walk-forward, backtest or transaction-cost exercise. The censoring ordering reverses in the two quarters in which the exchanges' premiums were positive, one of them partial, and otherwise only in isolated months (Hyperliquid below both exchanges in November 2024 and, for BTC, July 2025) and against Binance over 2024Q4; these are too few to characterise when it reverses. The premium gap is a difference between venue-specific premium measures, each taken against the venue's own index or oracle with its own impact size and weights, and the candidate sources cannot be separated with public data; Bybit's index weights are snapshots, and its impact notional is not given in the pages we used. The \MSAR\ is misspecified: the premium index is a within-hour average, which induces a moving-average component, and the residuals are far from Gaussian; the sandwich covariance repairs its standard errors only in part, because one hour dominates it. The return model's Gaussian emission is rejected, a Student-$t$ GARCH fits better on BIC, and the estimation-window fit stopped at $150$ iterations and cannot be re-estimated; its sub-period counterpart is converged. The documentation behind Table~\ref{tab:construction} is as retrieved on 8~October 2026 and need not describe the whole sample.
 
 % =========================================================================
 \section{Conclusion}\label{sec:conclusion}
 
-The measurement we would most like carried forward is the censoring. One rule, common to the major perpetual venues, pins funding to the interest rate in $46\%$ of Hyperliquid's settlements and in only $6$ to $8\%$ of Binance's and Bybit's over the same window, because the exchanges' premiums sit just below the band while Hyperliquid's straddles its edge. Work on Hyperliquid funding should model the premium, and cross-venue comparisons that read funding as positioning should compare premiums, with their windows and indices in view. Why the premiums sit where they do --- index construction, the depth of arbitrage capital, the mix of traders --- is the question the measurement opens, and it needs more venues, assets and market phases.
+One funding rule, common to Hyperliquid, Binance and Bybit, pins the rate to the interest rate whenever the averaged premium lies in a band 10~bps wide. Measured exactly, Hyperliquid's BTC funding sat there in $46\%$ of hours over the estimation window and $55\%$ since December 2023, against $6\%$ to $8\%$ and $24\%$ to $27\%$ of the exchanges' settlements, and ETH is similar. The difference is a difference in premiums: Hyperliquid's sat a median $2.2$~bps above the exchanges' for BTC, persistent in sign, smallest in the first half of 2026 and wider again in its third quarter, and in the two quarters in which the exchanges' premiums were positive, one of them partial, the ordering reversed, which we read as suggestive. Cross-venue work that reads funding as positioning or integration should compare premiums, with their constructions in view; why Hyperliquid's premium sits higher is the question the measurement opens.
 
-On returns, the estimated probability that hourly volatility moves directly from the high state to the low is zero, with a $95\%$ bound of $0.3\%$ per hour. On the premium, the asymmetry in mean reversion describes the October 2025 episode and not the series. The natural extensions are a Student-$t$ or generalised-hyperbolic emission \citep{foroni2024hidden}, time-varying transition probabilities driven by covariates such as open interest or liquidity \citep{filardo1994business}, and a regime-conditional carry backtest once the asymmetry has been seen across several episodes.
+The regime models describe one asset, one venue and one episode. The premium's faster reversion under stress belongs to the October 2025 episode and its aftermath: on the estimation window it is significant with the Hessian but not with the sandwich covariance, and one hour of the 10~October crash sets most of its size, the ratio falling from $11.2$ to $1.8$ without that hour and to $3.0$ with the hour set to the next largest value. With the premium's upper $1\%$ winsorised it is significant under both covariances (sandwich $p = 0.033$), and the first rolling window to start after the crash, on 20~October, still finds it with the Hessian ($p = 0.031$); later data reverse it, and its likelihood has a frequent optimum that is not its maximum. The return model's three volatility states and its high-to-low transition at zero discretise clustered volatility in a way a single-regime GARCH reproduces. Natural extensions are a Student-$t$ or generalised-hyperbolic emission \citep{foroni2024hidden}, within-state volatility dynamics \citep{haas2004new}, time-varying transition probabilities \citep{filardo1994business}, more venues, assets and phases, and a carry backtest once the asymmetry has been seen across several episodes.
 
 % =========================================================================
 \section*{Data and Code Availability}
 \addcontentsline{toc}{section}{Data and Code Availability}
 
 \begin{sloppypar}
-The estimation panel comes from Hyperliquid's public REST API --- \texttt{candleSnapshot} (hourly OHLCV candles of traded prices) and \texttt{fundingHistory} (hourly funding rate and premium index) --- retrieved on 28 April 2026; the premium series beyond it and the two-hourly candles were retrieved from the same endpoints in August and October 2026. Binance and Bybit data come from their public endpoints (Binance: \texttt{fapi/v1/fundingRate} and \texttt{fapi/v1/premiumIndexKlines}; Bybit: \texttt{v5/market/funding/history} and \texttt{v5/market/premium-index-price-kline}), retrieved on 6 October 2026. All endpoints are unauthenticated, and no proprietary or licensed data are used.
+All data come from unauthenticated public endpoints. Hyperliquid: \texttt{fundingHistory} (the funding rate and premium of each settlement) and \texttt{candleSnapshot} (candles of traded prices). Binance: \texttt{fapi/v1/fundingRate}, \texttt{fapi/v1/premiumIndexKlines}, \texttt{fapi/v1/klines} and the spot \texttt{api/v3/klines} for USDCUSDT. Bybit: \texttt{v5/market/funding/history} and \texttt{v5/market/premium-index-price-kline}. The original hourly extract of the estimation window was retrieved on 28~April 2026 and survives only through its archived summary (fitted parameters and price range); the shipped hourly panel, from 3~December 2025, and its continuation to 27~August 2026 (Figure~\ref{fig:windows}) were retrieved from \texttt{candleSnapshot} after that date, by 2~August and 3~September 2026 respectively. The premium series of the estimation and later windows was re-retrieved from \texttt{fundingHistory} on 19~August 2026 and extended on 6~October 2026, when the Binance and Bybit series of those windows were retrieved as well; the two-hourly candles were retrieved in August and October 2026, and the long histories (\texttt{data/longhistory}) and the premium-gap series (\texttt{data/premium\_gap}: the hourly aggregates of the one-minute premium-index klines, settlements and prices) on 8~October 2026. No proprietary or licensed data are used.
 \end{sloppypar}
 
-The \emph{funding and premium} series is fully replicable: \texttt{fundingHistory} has no retention limit, and an independent re-retrieval agreed with the archived panel to machine precision on all $3{,}507$ overlapping hours. The hourly \emph{price} series is not: the results that use hourly prices before 3 December 2025 --- the log-return and closing-price rows of Table~\ref{tab:summary}, Tables~\ref{tab:modelsel}--\ref{tab:regime-params}, Figure~\ref{fig:transitions}, which draws the full-sample kernel, and the price labels of Figure~\ref{fig:windows} --- rest on the original extract. Every other figure is drawn from the shipped data and artifacts: Figures~\ref{fig:dist} and~\ref{fig:dashboard} on the archived hourly panel of 3 December 2025 -- 28 April 2026, and Figure~\ref{fig:funding} on the paper window of the premium series. The materials also contain two-hourly candles for the whole span (Figure~\ref{fig:windows}); the exchange's two-hourly window will cease to cover 2 October 2025 in late November 2026, its four-hourly window in 2028.
+Every funding, premium, censoring, premium-gap and \MSAR\ result rebuilds from the shipped series, which can themselves be re-fetched. The hourly prices before 3~December 2025 cannot: the estimation-window return fit (Table~\ref{tab:hmm}, Figure~\ref{fig:transitions} and the volatilities quoted from it) rests on the original extract through its archived parameters, and the off-diagonal cells of its transition matrix are reconstructed. Code, data, the fitted parameters behind every table, figure and quoted number, and the seeds and multi-start protocols are in the replication repository (version 1.3.0),
+\begin{center}\url{https://github.com/gelatotrade/HMM-Decentralised-Perpetual-Futures/tree/v1.3.0}.\end{center}
 
-Code, data, the fitted parameters behind every table, figure and quoted fit in machine-readable form --- except the full-sample $K{=}2$ fit, whose log-likelihood survives only in Table~\ref{tab:modelsel} --- and the seeds and multi-start protocol behind each estimate are in the replication repository,
-\begin{center}\url{https://github.com/gelatotrade/HMM-Decentralised-Perpetual-Futures}.\end{center}
+\section*{Use of Generative Tools}
+\addcontentsline{toc}{section}{Use of Generative Tools}
+
+AI assistants (Claude, Anthropic) supported this work: in searching the literature, in writing and testing code, in cross-checking results and in drafting and editing the text. The research question, the design of the study and the interpretation of the results are the author's; the author directed the work, reviewed its results and takes full responsibility for the content of this paper.
 
 \section*{Competing Interests}
 \addcontentsline{toc}{section}{Competing Interests}
 
-The author does not trade on Hyperliquid, Binance or Bybit, holds no equity, advisory or employment relationship with any of them, and received no compensation connected with this work; no third party reviewed or influenced the analysis. The Hyperliquid Research Collective, which publishes this research under the author's name alongside this posting, is an independent group despite the shared name and has no relationship to Hyperliquid; the author's work for it is unpaid.
+The author trades on Hyperliquid with personal funds and holds Hyperliquid-related assets; the author does not trade on Binance or Bybit and has no equity, advisory or employment relationship with any of the three venues. The author contributes, unpaid, to the Hyperliquid Research Collective (HRC), which republishes this research free of charge alongside this posting. HRC was initiated by GLC Research and Four Pillars with support from HypurrCollective, Hyperion DeFi, Hyperliquid Strategies and B-Harvest (its website now lists Altus in place of B-Harvest); its launch announcement states the aim of lowering perceived market risk and improving the valuation multiples of Hyperliquid's token, and two of its supporters are listed companies that hold that token. HRC describes itself as independent research, not affiliated with Hyperliquid. Neither HRC nor its supporters influenced the choice of topic, reviewed the analysis or approved this paper, and the author received no compensation connected with this work.
 
 \section*{Funding}
 \addcontentsline{toc}{section}{Funding}
@@ -379,21 +352,38 @@ The author does not trade on Hyperliquid, Binance or Bybit, holds no equity, adv
 This research received no specific grant from any funding agency in the public, commercial or not-for-profit sectors.
 
 % =========================================================================
-\clearpage
 \bibliographystyle{plainnat}
-\begin{thebibliography}{99}\setlength{\itemsep}{1pt}\small\raggedright
+\begin{thebibliography}{99}\addcontentsline{toc}{section}{References}\setlength{\itemsep}{0pt}\fontsize{8}{9}\selectfont\raggedright
 
 \bibitem[Ackerer et~al.(2026)]{ackerer2024}
-Ackerer, D., Hugonnier, J., and Jermann, U. (2026).
+Ackerer, D., Hugonnier, J., and Jermann, U.~J. (2026).
 \newblock Perpetual futures pricing.
 \newblock \textit{Mathematical Finance} 36(3), 481--499.
 \newblock \url{https://doi.org/10.1111/mafi.70018}.
+
+\bibitem[Ahmed and Bhuyan(2026a)]{ahmed2026interest}
+Ahmed, S. and Bhuyan, R. (2026a).
+\newblock The interest parameter in perpetual futures: Shariah analysis and empirical evidence from centralized and decentralized exchanges.
+\newblock Working paper, SSRN 6862758.
+\newblock \url{https://doi.org/10.2139/ssrn.6862758}.
+
+\bibitem[Ahmed and Bhuyan(2026b)]{ahmed2026event}
+Ahmed, S. and Bhuyan, R. (2026b).
+\newblock Separating event intensity from fixed funding carry: Evidence from perpetual futures and credit markets.
+\newblock Working paper, SSRN 7143718.
+\newblock \url{https://doi.org/10.2139/ssrn.7143718}.
 
 \bibitem[Alexander et~al.(2020)]{alexander2020bitmex}
 Alexander, C., Choi, J., Park, H., and Sohn, S. (2020).
 \newblock BitMEX bitcoin derivatives: Price discovery, informational efficiency, and hedging effectiveness.
 \newblock \textit{Journal of Futures Markets} 40(1), 23--43.
 \newblock \url{https://doi.org/10.1002/fut.22050}.
+
+\bibitem[Amirov(2026)]{amirov2026anchor}
+Amirov, R. (2026).
+\newblock The misplaced anchor: Interest rate components in perpetual futures funding mechanisms.
+\newblock Working paper, SSRN 6751742.
+\newblock \url{https://doi.org/10.2139/ssrn.6751742}.
 
 \bibitem[Ang and Timmermann(2012)]{ang2012}
 Ang, A. and Timmermann, A. (2012).
@@ -409,19 +399,42 @@ Ardia, D., Bluteau, K., and R\"uede, M. (2019).
 
 \bibitem[Binance(2026)]{binance_funding_docs}
 Binance (2026).
-\newblock Introduction to Binance Futures funding rates. Binance Support. Accessed 6 October 2026.
+\newblock Introduction to Binance Futures funding rates. Binance Support, updated 6 March 2026. Accessed 8 October 2026.
 \newblock \url{https://www.binance.com/en/support/faq/introduction-to-binance-futures-funding-rates-360033525031}.
 
-\bibitem[Bybit(2026)]{bybit_funding_docs}
-Bybit (2026).
-\newblock Introduction to funding rate. Bybit Help Center. Accessed 6 October 2026.
+\bibitem[Bybit(2026a)]{bybit_funding_docs}
+Bybit (2026a).
+\newblock Introduction to funding rate. Bybit Help Center, updated 22 May 2026. Accessed 8 October 2026.
 \newblock \url{https://www.bybit.com/en/help-center/article/Introduction-to-Funding-Rate}.
 
-\bibitem[Cho and White(2007)]{cho2007}
-Cho, J.~S. and White, H. (2007).
-\newblock Testing for regime switching.
-\newblock \textit{Econometrica} 75(6), 1671--1720.
-\newblock \url{https://doi.org/10.1111/j.1468-0262.2007.00809.x}.
+\bibitem[Bybit(2026b)]{bybit_index_docs}
+Bybit (2026b).
+\newblock Index price calculation. Bybit Help Center, updated 19 June 2026. Accessed 8 October 2026.
+\newblock \url{https://www.bybit.com/en/help-center/article/Index-Price-Calculation}.
+
+\bibitem[Campbell et~al.(2026)]{campbell2026adl}
+Campbell, S., Hey, N., Moallemi, C.~C., and Nutz, M. (2026).
+\newblock Risk-based auto-deleveraging.
+\newblock Working paper, arXiv:2603.15963.
+\newblock \url{https://doi.org/10.48550/arXiv.2603.15963}.
+
+\bibitem[Chen et~al.(2024)]{chen2024perpetual}
+Chen, E., Ma, M., and Nie, Z. (2024).
+\newblock Perpetual future contracts in centralized and decentralized exchanges: Mechanism and traders' behavior.
+\newblock \textit{Electronic Markets} 34(1), 35.
+\newblock \url{https://doi.org/10.1007/s12525-024-00715-1}.
+
+\bibitem[Chitra(2025)]{chitra2025adl}
+Chitra, T. (2025).
+\newblock Autodeleveraging: Impossibilities and optimization.
+\newblock Working paper, arXiv:2512.01112.
+\newblock \url{https://doi.org/10.48550/arXiv.2512.01112}.
+
+\bibitem[Chitra et~al.(2026)]{chitra2026online}
+Chitra, T., Thogiti, N., Trujillo~Ramirez, M.~J.~P., and Xu, V. (2026).
+\newblock Autodeleveraging as online learning.
+\newblock Working paper, arXiv:2602.15182.
+\newblock \url{https://doi.org/10.48550/arXiv.2602.15182}.
 
 \bibitem[Cont(2007)]{cont2005volatility}
 Cont, R. (2007).
@@ -430,11 +443,35 @@ Cont, R. (2007).
   Springer, Berlin, pp.~289--309.
 \newblock \url{https://doi.org/10.1007/978-3-540-34625-8_10}.
 
-\bibitem[Davies(1987)]{davies1987}
-Davies, R.~B. (1987).
-\newblock Hypothesis testing when a nuisance parameter is present only under the alternative.
-\newblock \textit{Biometrika} 74(1), 33--43.
-\newblock \url{https://doi.org/10.1093/biomet/74.1.33}.
+\bibitem[Denby and Martin(1979)]{denby1979}
+Denby, L. and Martin, R.~D. (1979).
+\newblock Robust estimation of the first-order autoregressive parameter.
+\newblock \textit{Journal of the American Statistical Association} 74(365), 140--146.
+\newblock \url{https://doi.org/10.1080/01621459.1979.10481630}.
+
+\bibitem[Diebold et~al.(1998)]{diebold1998}
+Diebold, F.~X., Gunther, T.~A., and Tay, A.~S. (1998).
+\newblock Evaluating density forecasts with applications to financial risk management.
+\newblock \textit{International Economic Review} 39(4), 863--883.
+\newblock \url{https://doi.org/10.2307/2527342}.
+
+\bibitem[Erez and Smirnov(2026a)]{erez2026timing}
+Erez, E. and Smirnov, M. (2026a).
+\newblock Funding timing and no-arbitrage bounds in decentralized perpetual markets.
+\newblock Working paper, SSRN 6805838.
+\newblock \url{https://doi.org/10.2139/ssrn.6805838}.
+
+\bibitem[Erez and Smirnov(2026b)]{erez2026venues}
+Erez, E. and Smirnov, M. (2026b).
+\newblock Perpetual futures and their arbitrage on decentralized and centralized venues.
+\newblock Working paper, SSRN 7550140.
+\newblock \url{https://doi.org/10.2139/ssrn.7550140}.
+
+\bibitem[Fieller(1954)]{fieller1954}
+Fieller, E.~C. (1954).
+\newblock Some problems in interval estimation.
+\newblock \textit{Journal of the Royal Statistical Society: Series B} 16(2), 175--185.
+\newblock \url{https://doi.org/10.1111/j.2517-6161.1954.tb00159.x}.
 
 \bibitem[Filardo(1994)]{filardo1994business}
 Filardo, A.~J. (1994).
@@ -442,17 +479,17 @@ Filardo, A.~J. (1994).
 \newblock \textit{Journal of Business \& Economic Statistics} 12(3), 299--308.
 \newblock \url{https://doi.org/10.1080/07350015.1994.10524545}.
 
-\bibitem[Foroni et~al.(2025)]{foroni2024hidden}
-Foroni, B., Merlo, L., and Petrella, L. (2025).
+\bibitem[Foroni et~al.(2026)]{foroni2024hidden}
+Foroni, B., Merlo, L., and Petrella, L. (2026).
 \newblock Hidden Markov graphical models with state-dependent generalized hyperbolic distributions.
-\newblock \textit{Canadian Journal of Statistics}, article e70030.
+\newblock \textit{Canadian Journal of Statistics} 54(3), e70030.
 \newblock \url{https://doi.org/10.1002/cjs.70030}.
 
-\bibitem[Gassiat and Boucheron(2003)]{gassiat2003}
-Gassiat, E. and Boucheron, S. (2003).
-\newblock Optimal error exponents in hidden Markov models order estimation.
-\newblock \textit{IEEE Transactions on Information Theory} 49(4), 964--980.
-\newblock \url{https://doi.org/10.1109/TIT.2003.809574}.
+\bibitem[Fox(1972)]{fox1972}
+Fox, A.~J. (1972).
+\newblock Outliers in time series.
+\newblock \textit{Journal of the Royal Statistical Society: Series B} 34(3), 350--363.
+\newblock \url{https://doi.org/10.1111/j.2517-6161.1972.tb00912.x}.
 
 \bibitem[Giudici and Abu~Hashish(2020)]{giudici2020}
 Giudici, P. and Abu~Hashish, I. (2020).
@@ -472,16 +509,23 @@ Hamilton, J.~D. (1989).
 \newblock \textit{Econometrica} 57(2), 357--384.
 \newblock \url{https://doi.org/10.2307/1912559}.
 
-\bibitem[Hansen(1992)]{hansen1992}
-Hansen, B.~E. (1992).
-\newblock The likelihood ratio test under nonstandard conditions: testing the Markov switching model of GNP.
-\newblock \textit{Journal of Applied Econometrics} 7(S1), S61--S82.
-\newblock \url{https://doi.org/10.1002/jae.3950070506}.
-
-\bibitem[He et~al.(2022)]{he2022perp}
-He, S., Manela, A., Ross, O., and von Wachter, V. (2022).
+\bibitem[He et~al.(2026a)]{he2022perp}
+He, S., Manela, A., Ross, O., and von Wachter, V. (2026a).
 \newblock Fundamentals of perpetual futures.
-\newblock arXiv:2212.06888.
+\newblock Working paper, arXiv:2212.06888, version 7 (first version December 2022).
+\newblock \url{https://doi.org/10.48550/arXiv.2212.06888}.
+
+\bibitem[He et~al.(2026b)]{hewangzhang2026}
+He, S., Wang, S., and Zhang, T. (2026b).
+\newblock A shared template without shared feedback: Funding rates in cryptocurrency perpetual futures.
+\newblock Working paper, SSRN 6185958.
+\newblock \url{https://doi.org/10.2139/ssrn.6185958}.
+
+\bibitem[Heitjan and Rubin(1991)]{heitjan1991}
+Heitjan, D.~F. and Rubin, D.~B. (1991).
+\newblock Ignorability and coarse data.
+\newblock \textit{Annals of Statistics} 19(4), 2244--2253.
+\newblock \url{https://doi.org/10.1214/aos/1176348396}.
 
 \bibitem[Hugonnier and Jermann(2025)]{hugonnier2025clamp}
 Hugonnier, J. and Jermann, U.~J. (2025).
@@ -489,21 +533,26 @@ Hugonnier, J. and Jermann, U.~J. (2025).
 \newblock Working paper, SSRN 5610430.
 \newblock \url{https://doi.org/10.2139/ssrn.5610430}.
 
-\bibitem[Hyperliquid(2026)]{hyperliquid_funding_docs}
-Hyperliquid (2026).
-\newblock Funding. Hyperliquid Docs. Accessed 18 August 2026.
+\bibitem[Hyperliquid(2026a)]{hyperliquid_funding_docs}
+Hyperliquid (2026a).
+\newblock Funding. Hyperliquid Docs. Accessed 8 October 2026.
 \newblock \url{https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding}.
 
-\bibitem[Kass and Raftery(1995)]{kass1995bayes}
-Kass, R.~E. and Raftery, A.~E. (1995).
-\newblock Bayes factors.
-\newblock \textit{Journal of the American Statistical Association} 90(430), 773--795.
-\newblock \url{https://doi.org/10.1080/01621459.1995.10476572}.
+\bibitem[Hyperliquid(2026b)]{hyperliquid_oracle_docs}
+Hyperliquid (2026b).
+\newblock Oracle. Hyperliquid Docs. Accessed 8 October 2026.
+\newblock \url{https://hyperliquid.gitbook.io/hyperliquid-docs/hypercore/oracle}.
 
-\bibitem[Keribin(2000)]{keribin2000}
-Keribin, C. (2000).
-\newblock Consistent estimation of the order of mixture models.
-\newblock \textit{Sankhy\=a: The Indian Journal of Statistics, Series A} 62(1), 49--66.
+\bibitem[Hyperliquid(2026c)]{hyperliquid_contract_docs}
+Hyperliquid (2026c).
+\newblock Contract specifications. Hyperliquid Docs. Accessed 8 October 2026.
+\newblock \url{https://hyperliquid.gitbook.io/hyperliquid-docs/trading/contract-specifications}.
+
+\bibitem[Jammalamadaka and Mangalam(2003)]{jammalamadaka2003}
+Jammalamadaka, S.~R. and Mangalam, V. (2003).
+\newblock Nonparametric estimation for middle-censored data.
+\newblock \textit{Journal of Nonparametric Statistics} 15(2), 253--265.
+\newblock \url{https://doi.org/10.1080/1048525031000089266}.
 
 \bibitem[Kim(1994)]{kim1994dynamic}
 Kim, C.-J. (1994).
@@ -523,11 +572,41 @@ Koki, C., Leonardos, S., and Piliouras, G. (2022).
 \newblock \textit{Research in International Business and Finance} 59, 101554.
 \newblock \url{https://doi.org/10.1016/j.ribaf.2021.101554}.
 
-\bibitem[Koutmos(2018)]{koutmos2018}
-Koutmos, D. (2018).
-\newblock Bitcoin returns and transaction activity.
-\newblock \textit{Economics Letters} 167, 81--85.
-\newblock \url{https://doi.org/10.1016/j.econlet.2018.03.021}.
+\bibitem[Lau(2026)]{lau2026carry}
+Lau, T. (2026).
+\newblock The funding carry and a cross-venue spread on perpetual futures: A significance-tested study of Hyperliquid and centralized venues.
+\newblock Working paper, SSRN 6993978.
+\newblock \url{https://doi.org/10.2139/ssrn.6993978}.
+
+\bibitem[Le(2026)]{le2026funding}
+Le, N.~A. (2026).
+\newblock Funding-aware optimal market making for perpetual DEXs.
+\newblock Working paper, arXiv:2605.06405.
+\newblock \url{https://doi.org/10.48550/arXiv.2605.06405}.
+
+\bibitem[Lim(2026a)]{lim2026sameshock}
+Lim, B.~C. (2026a).
+\newblock Same shock, same assets, different microstructure: A comparative analysis of CeFi and DeFi venue performance during the October 10, 2025 cryptocurrency cascade.
+\newblock Working paper, SSRN 6559300.
+\newblock \url{https://doi.org/10.2139/ssrn.6559300}.
+
+\bibitem[Lim(2026b)]{lim2026recovery}
+Lim, B.~C. (2026b).
+\newblock Two-regime liquidity recovery after a perpetual futures liquidation cascade: Evidence from Hyperliquid and the October 10, 2025 event.
+\newblock Working paper, SSRN 6636998.
+\newblock \url{https://doi.org/10.2139/ssrn.6636998}.
+
+\bibitem[Lim(2026c)]{lim2026rarely}
+Lim, B.~C. (2026c).
+\newblock The perpetual that rarely pays: Funding deadbands and basis discipline in the first CFTC-regulated perpetual futures market.
+\newblock Working paper, SSRN 7098201.
+\newblock \url{https://doi.org/10.2139/ssrn.7098201}.
+
+\bibitem[Lim(2026d)]{lim2026inaction}
+Lim, B.~C. (2026d).
+\newblock Inaction regions in perpetual futures: Deadband funding and price convergence.
+\newblock Working paper, SSRN 7205749.
+\newblock \url{https://doi.org/10.2139/ssrn.7205749}.
 
 \bibitem[Machimbo et~al.(2025)]{machimbo2025}
 Machimbo, E.~W., Cheruiyot, W., Mocheche, G.~M., and Mutegi, J. (2025).
@@ -547,11 +626,23 @@ Rabiner, L.~R. (1989).
 \newblock \textit{Proceedings of the IEEE} 77(2), 257--286.
 \newblock \url{https://doi.org/10.1109/5.18626}.
 
+\bibitem[Rosenblatt(1952)]{rosenblatt1952}
+Rosenblatt, M. (1952).
+\newblock Remarks on a multivariate transformation.
+\newblock \textit{Annals of Mathematical Statistics} 23(3), 470--472.
+\newblock \url{https://doi.org/10.1214/aoms/1177729394}.
+
 \bibitem[Schmeling et~al.(2026)]{schmeling2025crypto}
 Schmeling, M., Schrimpf, A., and Todorov, K. (2026).
 \newblock Crypto carry.
 \newblock \textit{Management Science}, articles in advance.
 \newblock \url{https://doi.org/10.1287/mnsc.2024.05069}.
+
+\bibitem[Shek(2026)]{shek2026drag}
+Shek, H. (2026).
+\newblock Limits to coordination: Funding drag in crypto perpetual funding rates.
+\newblock Working paper, SSRN 7529458.
+\newblock \url{https://doi.org/10.2139/ssrn.7529458}.
 
 \bibitem[Stephens(2000)]{stephens2000label}
 Stephens, M. (2000).
@@ -565,6 +656,12 @@ Werapun, W., Karode, T., Suaboot, J., Arpornthip, T., and Sangiamkul, E. (2026).
 \newblock \textit{Blockchain: Research and Applications} 7(4), 100354.
 \newblock \url{https://doi.org/10.1016/j.bcra.2025.100354}.
 
+\bibitem[White(1982)]{white1982}
+White, H. (1982).
+\newblock Maximum likelihood estimation of misspecified models.
+\newblock \textit{Econometrica} 50(1), 1--25.
+\newblock \url{https://doi.org/10.2307/1912526}.
+
 \bibitem[Zhivkov(2026)]{zhivkov2026funding}
 Zhivkov, P. (2026).
 \newblock The two-tiered structure of cryptocurrency funding rate markets.
@@ -573,81 +670,119 @@ Zhivkov, P. (2026).
 
 \bibitem[Zhivkov et~al.(2026)]{zhivkov2026temporal}
 Zhivkov, P., Todorov, V., and Georgiev, S. (2026).
-\newblock Temporal dynamics of market microstructure in cryptocurrency perpetual futures:
-  Econometric evidence from centralized and decentralized exchanges.
+\newblock Temporal dynamics of market microstructure in cryptocurrency perpetual futures: Econometric evidence from centralized and decentralized exchanges.
 \newblock \textit{International Journal of Financial Studies} 14(5), 103.
 \newblock \url{https://doi.org/10.3390/ijfs14050103}.
 
 \end{thebibliography}
 
 % =========================================================================
-\clearpage
 \appendix
-\renewcommand{\thetable}{A\arabic{table}}
+\section{Estimation details}\label{app:estimation}
+\renewcommand{\theequation}{A\arabic{equation}}
+\setcounter{equation}{0}
+
+\paragraph{The return model.} With $S_t\in\{1,\dots,K\}$ the latent state and Gaussian emissions, the filtered posterior $\Prob(S_t=k\given\Filt_t)$ uses only the past; the smoothed posterior conditions on the whole sample and is an in-sample diagnostic only. Baum--Welch runs in log space. Every random start (eight per fit; on the data seeded $42 + K$, that is $45$ for $K = 3$ and $44$ for $K = 2$, and on simulated paths one seed per path) runs until the log-likelihood gains less than $10^{-6}$; the first start with the largest final log-likelihood is continued until it changes by less than $10^{-9}$ and no parameter moves by more than $10^{-10}$. For the comparison of $K = 2$ to $5$ each fit starts from about $200$ points: $40$ random starts drawn like the eight (seed $45 + K$), $160$ with state volatilities spread log-uniformly over $0.15$ to $3.5$ times the sample standard deviation (seed $20261009 + K$), and splits of each state of the best fit with one state fewer. The archived estimation-window fit used the eight starts but stopped at $150$ iterations. Standard errors come from a parametric bootstrap of $500$ series simulated from the fitted chain. States are ordered by $\hat\sigma_k$: ordered by $\hat\mu_k$ \citep{stephens2000label}, the labels would switch in $40.2\%$ of bootstrap replications, because two of the three means lie within $0.27$~bps per hour of each other, and the $95\%$ interval for the state with $\hat\sigma = 15.6$~bps per hour would be $[14.6, 90.7]$ instead of $[14.5, 16.5]$.
+
+\paragraph{The premium model.} In~\eqref{eq:msar} $\mu_k$ is the regime level; the fixed-coefficient form would carry the intercept $\mu_k(1-\phi_k)$, which is badly behaved with $\hat\phi_k$ near unity. We estimate with \texttt{statsmodels}, which combines an EM initialisation, a random start search and quasi-Newton optimisation with the Hamilton filter and the smoother of \citet{kim1994dynamic}, from $40$ estimations (seeds $20260802$ to $20260841$) of $40$ random initialisations each, and report the highest terminal log-likelihood. An estimation whose start search fails numerically is dropped, and a start whose log-likelihood is not finite, whose smallest regime variance falls below $10^{-6}$ times the sample variance or whose Hessian is singular cannot be the reported optimum.
+
+\paragraph{Half-lives under switching.} With $P$ the transition matrix and $\Phi = \operatorname{diag}(\phi_1, \phi_2)$, the expected deviation $x_t = y_t - \mu_{S_t}$ after a unit dislocation in regime $k$ is
+\begin{equation}\label{eq:switching}
+  m_k(h) = \E[x_{t+h}\given x_t = 1, S_t = k] = e_k^{\top} (P\Phi)^h \mathbf{1},
+\end{equation}
+and $\tau^{\text{sw}}_k$ is the first hour with $m_k(h) \le 1/2$, interpolated log-linearly between whole hours. The ratio $\Rsw$ of the calm to the stressed $\tau^{\text{sw}}_k$ exceeds unity exactly when $\phi_{\text{calm}} > \phi_{\text{stressed}}$, provided both $\phi_k$ are positive and $p_{cc} + p_{ss} - 1$, the second eigenvalue of $P$, is positive; it therefore takes the Wald verdict whenever both coefficients are positive and this eigenvalue is significantly positive, as they are in every fit we report. Its simulated interval draws $50{,}000$ parameter vectors from their asymptotic normal distribution, the transition probabilities on the logit scale.
+
+\begin{sloppypar}
+\paragraph{Covariances and intervals.} The Hessian covariance is $-H^{-1}$, the outer product of gradients is $(S^{\top}S)^{-1}$, with $S$ the matrix of per-hour scores, and the sandwich is $H^{-1}S^{\top}S H^{-1}$ \citep{white1982}. The side of unity of $R$ is the two-sided Wald test of $\phi_{\text{calm}} = \phi_{\text{stressed}}$ at $5\%$. The linear and log-scale delta intervals and Fieller's set \citep{fieller1954} are descriptive; fed with delta-method variances of $\ln|\phi_k|$, Fieller's set is first-order here too, and it can be unbounded.
+\end{sloppypar}
+
+% =========================================================================
+\section{The premium gap: construction and validation}\label{app:gap}
+
+\paragraph{Alignment and settlements.} Hyperliquid stamps each funding record at the end of the hour whose premium it averages, so the record stamped $t$ covers $[t-1\text{h}, t)$; for the same hour we average the closes of the exchange's one-minute premium-index klines that open in $[t-1\text{h}, t)$ and keep an hour only when all $60$ minutes are present. An hour enters $D_t$ only when both venues have it: one Binance hour lacks minutes, which leaves $24{,}576$ hours against Binance and $24{,}577$ against Bybit. An exchange settlement at $s$ averages its premium over $(s-8\text{h}, s]$: Binance weights its five-second samples $1, \dots, 5{,}760$, which we rebuild from minute closes with linear weights, and Bybit weights its minute samples $1, \dots, 480$ from the settlement of 7~March 2024 16:00~UTC and equally before.
+
+\paragraph{Decomposition.} For a group of quarters let $G$ be each quarter's median hourly gap. Three steps take Hyperliquid's share of hours in the band to the exchange's share of settlements at the floor: \emph{location} shifts the premium by $-G$; \emph{averaging} replaces hours by averages over the exchange's eight-hour blocks, weighted as the exchange weights them; \emph{dispersion} replaces Hyperliquid's premium by the exchange's at the same location, shifted by $+G$ while the location is still Hyperliquid's. Each step is taken (1) or not (0), and each of the eight combinations (location, averaging, dispersion) gives a share in the band, lettered as in the replication package: (a) $(0,0,0)$, Hyperliquid's hours; (b) $(1,0,0)$, the same hours shifted by $-G$; (c) $(0,1,0)$, Hyperliquid's eight-hour averages; (d) $(1,1,1)$, the exchange's settlements at the floor; (e) $(1,1,0)$, the averages of (c) shifted by $-G$; (f) $(0,0,1)$, the exchange's hours shifted by $+G$; (g) $(1,0,1)$, the exchange's hours; and (h) $(0,1,1)$, the exchange's eight-hour averages, rebuilt from its minute klines, shifted by $+G$. Location thus moves a$\to$b, c$\to$e, f$\to$g and h$\to$d; averaging a$\to$c, b$\to$e, f$\to$h and g$\to$d; dispersion a$\to$f, b$\to$g, c$\to$h and e$\to$d. In a given order of the three steps, a step's effect is the fall in the share when it is taken; its Shapley value averages that effect over the six orders, and the three values add up to (a) minus (d). Tables~\ref{tab:gap} and~\ref{tab:gap-eth} also give location's smallest and largest effect over the orders, and Table~\ref{tab:gap-quarters} dispersion's as well. Only (d) uses the settlements themselves; their small difference from the rebuilt averages enters each step's Shapley value equally.
+
+\paragraph{Intervals.} The $95\%$ intervals of the monthly and quarterly medians of $D_t$ are percentile intervals from a moving-block bootstrap with $168$-hour blocks and $2{,}000$ replicates; $24$- and $72$-hour blocks, run from the same seed, serve as a sensitivity check. The partial quarter 2023Q4 and month December 2023 are reported apart.
+
+% =========================================================================
+\renewcommand{\thetable}{C\arabic{table}}
+\renewcommand{\thefigure}{C\arabic{figure}}
 \setcounter{table}{0}
-\section{Additional Tables}\label{app:tables}
+\setcounter{figure}{0}
+\section{Additional tables and figures}\label{app:tables}
+
 
 \begin{table}[!htbp]
   \centering
-  \caption{Robustness of the $K{=}3$ state volatilities to winsorisation, estimated on the reproducible sub-period (3 Dec 2025 -- 28 Apr 2026, $T=3{,}507$). Winsorisation clips the most extreme $0.1\%$ of hourly returns, four observations in total. Under the $\hat\sigma$-ascending labelling of Section~\ref{ssec:hmm} index and state coincide, so column $k$ is State $k$ of Table~\ref{tab:regime-params}. The estimated probability of a direct high-to-low-volatility transition remains zero in both fits, and the stationary masses move by at most $1.2$ percentage points (high-volatility state $21.2\% \to 22.4\%$, low-volatility state $18.3\% \to 17.3\%$).}
-  \label{tab:robust}
-  \input{tables/table5_robustness.tex}
+  \caption{Panel B of Table~\ref{tab:gap} for ETH: Hyperliquid's hourly share at the floor (HL), the exchange's settlement share (Exch.), their difference, and its Shapley split (percentage points), by group of quarters.}
+  \label{tab:gap-eth}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \input{tables/table12b_premium_gap_groups.tex}
 \end{table}
 
 \begin{table}[!htbp]
   \centering
-  \caption{Residual diagnostics. Raw-return and \HMM\ rows use the sub-period panel ($T = 3{,}507$); \MSAR\ rows use the paper window ($T = 5{,}001$, leaving $4{,}999$ residuals --- the autoregressive lag costs one observation and the state-pair construction of the one-step forecast another), because that window's premium series survives and its return series does not. For the \HMM\ rows $z_t$ is standardised by the one-step-ahead mixture mean and the full conditional variance of \eqref{eq:cond-var}; headline rows use filtered (causal) state probabilities, smoothed rows are shown for contrast only.}
+  \caption{The split of Table~\ref{tab:gap} by quarter, for both assets and exchanges, with the smallest and largest effect of location and of dispersion over the six orders of the three steps.}
+  \label{tab:gap-quarters}
+  \footnotesize
+  \setlength{\tabcolsep}{3.5pt}
+  \input{tables/table12c_premium_gap_quarters.tex}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Residual diagnostics. Raw-return and \HMM\ rows use the hourly sub-period ($T = 3{,}507$); \MSAR\ rows use the estimation window ($T = 5{,}001$, leaving $4{,}999$ residuals). For the \HMM\ rows $z_t$ is standardised by the mixture mean and the full, within- plus between-state, variance; the headline rows weight the states by the one-step-ahead filtered prediction $\Prob(S_t\given\Filt_{t-1})$, the smoothed rows by the contemporaneous smoothed posterior $\Prob(S_t\given\Filt_T)$, which conditions on $r_t$ itself and is shown for contrast only. Moment-standardised mixture residuals are not $\mathcal{N}(0,1)$ even when the model is correct, so their Jarque--Bera $p$-values are not valid tests; probability-integral-transform residuals \citep{rosenblatt1952,diebold1998} would be.}
   \label{tab:diagnostics}
   \input{tables/table6_diagnostics.tex}
 \end{table}
 
 \begin{table}[!htbp]
   \centering
-  \caption{Out-of-family comparison on the sub-period panel ($T = 3{,}507$), all rows on the same raw log-return series with $\text{AIC} = 2k - 2\log\mathcal{L}$ and $\text{BIC} = k\log T - 2\log\mathcal{L}$; lower is better. Log-likelihoods are not scale-free, so mixing return units across rows would decide the ranking by itself. The Student-$t$ GARCH row, which wins on BIC, is near-integrated ($\hat\alpha + \hat\beta = 0.99998$, against the bound of $0.99999$ imposed in estimation) with $\hat\nu = 3.35$: a barely finite unconditional variance, no finite kurtosis. Both qualifications are recorded in \texttt{output/benchmarks.json}.}
+  \caption{Rolling \MSAR(1) estimates of $R = \hat\tau_{\text{calm}}/\hat\tau_{\text{stressed}}$ on the premium series, windows of $2{,}500$ hours stepped by $450$, $40$ estimations each, at the window mid-points; estimations that fail numerically ($0$ to $24$ of the $40$ per window) are dropped, and the reported optimum is reached by $3$ to $40$ of the rest ($3$ of $38$ in the window centred on 6~February 2026, whose most frequent optimum lies $0.13$ log-likelihood points lower); in the fit of Table~\ref{tab:sensitivity} with one hour set to the maximum at 15~July 2026, $18$ of the $40$ fail numerically, $18$ more end at the variance floor or with a singular Hessian, and the reported optimum is reached by $2$ of the $4$ admissible ones. $p$: Wald test of $\phi_{\text{calm}} = \phi_{\text{stressed}}$ under the Hessian and the sandwich covariance; Side: its verdict at $5\%$ (n.s.: not significant). $\hat R^{\text{sw}}$: the switching-adjusted ratio, with a $95\%$ interval simulated from the sandwich covariance; an end at $0.00$ or $\infty$ comes from draws whose expected path does not halve within $10{,}000$ hours.}
+  \label{tab:rolling}
+  \small
+  \input{tables/table8b_rolling_robust.tex}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{The ratio $R$ under changes to the premium's upper tail on the estimation window, on the other windows, and on the later window with one hour set to the October maximum, $+23.61$~bps, at each quartile; columns as in Table~\ref{tab:rolling}. \emph{Max.\ $\to$ 2nd largest}: the maximum replaced by the next largest value, $9.52$~bps. \emph{Whole series}: the estimation and later windows together, 2~October 2025 to 30~September 2026.}
+  \label{tab:sensitivity}
+  \footnotesize
+  \input{tables/table9b_sensitivity_robust.tex}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{The three-state volatilities with the most extreme $0.1\%$ of hourly returns (four) winsorised, hourly sub-period; column~$k$ is State~$k$ of Table~\ref{tab:hmm}. The high-to-low transition stays at zero in both fits.}
+  \label{tab:robust}
+  \footnotesize
+  \input{tables/table5_robustness.tex}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{Out-of-family comparison on the hourly sub-period ($T = 3{,}507$), all rows on log-returns in decimal units (in bps each $\log\mathcal{L}$ shifts by $-T\ln 10^4$, leaving differences unchanged); $\text{AIC} = 2k - 2\log\mathcal{L}$ and $\text{BIC} = k\log T - 2\log\mathcal{L}$, lower is better. The Student-$t$ GARCH, best on BIC, is near-integrated ($\hat\alpha + \hat\beta = 0.99998$ against an imposed bound of $0.99999$) with $\hat\nu = 3.35$.}
   \label{tab:benchmarks}
+  \footnotesize
   \input{tables/table7_benchmarks.tex}
 \end{table}
 
-\begin{table}[!htbp]
+\begin{figure}[!htbp]
   \centering
-  \caption{Rolling \MSAR(1) estimates of $R = \hat\tau_{\text{calm}}/\hat\tau_{\text{stressed}}$ on the premium series, windows of $2{,}500$ hours stepped by $450$, forty starts each; the final $387$ hours of the series fill no further window. \emph{Side} records which side of unity the delta-method interval falls on; $\cdot$ marks a lower endpoint the delta method returns negative, which a half-life cannot be. \emph{Price} is the mean two-hourly closing price over the window and \emph{DD} its mean drawdown from the running peak. Regimes are labelled by $\hat\sigma^2_k$ ascending throughout.}
-  \label{tab:rolling}
-  \small
-  \input{tables/table8_rolling.tex}
-\end{table}
+  \includegraphics[width=\textwidth]{figures/fig2_distributions.pdf}
+  \caption{The three-state Gaussian \HMM\ on the hourly sub-period ($T = 3{,}507$). \textbf{(a)} Empirical density of hourly log-returns (grey) against the stationary mixture, cut at the $0.5$th and $99.5$th percentiles. \textbf{(b)} The estimated kernel $\hat A$, with the high-to-low zero of Section~\ref{ssec:hmm} at $(3,1)$.}
+  \label{fig:dist}
+\end{figure}
 
-\begin{table}[!htbp]
+\begin{figure}[!htbp]
   \centering
-  \caption{Sensitivity of the paper-window asymmetry to the upper tail of the premium. Each row refits \eqref{eq:msar} on $2$ October 2025 -- $28$ April 2026 after one change, with the baseline refitted alongside under the same protocol. \emph{Maximum $\to$ 2nd largest} replaces the $+23.61$ bps observation of 10 October 2025 by $9.52$ bps; \emph{Maximum deleted} removes it.}
-  \label{tab:sensitivity}
-  \input{tables/table9_sensitivity.tex}
-\end{table}
+  \includegraphics[width=0.94\textwidth]{figures/fig1_regime_dashboard.pdf}
+  \caption{Filtered posteriors over the hourly sub-period, 3~December 2025 to 28~April 2026. \textbf{(a)} Closing price, shaded by the dominant return state after a centred seven-hour median filter, which is non-causal and presentational only. \textbf{(b)} Filtered posterior of the three-state \HMM\ as mixed colour, blue, grey and red for the low-, moderate- and high-volatility states. \textbf{(c)} Hourly funding rate; blue and red fills mark rates above and below zero, the dotted line is the floor, and the range is cut at the $0.5$th and $99.5$th percentiles. \textbf{(d)} Filtered posterior of the \MSAR\ on the premium re-estimated on this window, where the half-life ordering is reversed; it is not the fit of Table~\ref{tab:msar}. \textbf{(e)} 24-hour realised volatility against the 24-hour trailing mean of the state-implied conditional volatility, both annualised.}
+  \label{fig:dashboard}
+\end{figure}
 
-\clearpage
-\section{Estimation Details}\label{app:estimation}
-\renewcommand{\theequation}{B\arabic{equation}}
-\setcounter{equation}{0}
-
-\paragraph{Recursions.} The filtered posterior is computed through the forward variable $\alpha_t(i) = \Prob(r_{1:t}, S_t=i\given\theta)$,
-\begin{equation}\label{eq:forward}
-  \alpha_1(i) = \pi_i\, b_i(r_1), \qquad
-  \alpha_{t+1}(j) = \Bigl[\textstyle\sum_i \alpha_t(i) A_{ij}\Bigr]\, b_j(r_{t+1}),
-\end{equation}
-and the smoothed posterior from the forward and backward variables,
-\begin{equation}\label{eq:smoothed}
-  \gamma_t(i) \;=\; \frac{\alpha_t(i)\,\beta_t(i)}{\textstyle\sum_j \alpha_T(j)},\qquad
-  \beta_t(i) = \textstyle\sum_j A_{ij}\, b_j(r_{t+1})\,\beta_{t+1}(j);
-\end{equation}
-the Viterbi path replaces the marginalisation in~\eqref{eq:forward} with maximisation. Baum--Welch alternates an E-step for $\gamma$ and the pairwise posteriors $\xi_t(i,j) = \Prob(S_t=i,S_{t+1}=j\given\Filt_T,\theta^{(n)})$ with the closed-form M-step
-\begin{equation}\label{eq:mstep}
-  \hat A_{ij} = \frac{\sum_t \xi_t(i,j)}{\sum_t \gamma_t(i)},\qquad
-  \hat\mu_k = \frac{\sum_t \gamma_t(k)\, r_t}{\sum_t \gamma_t(k)},\qquad
-  \hat\sigma_k^2 = \frac{\sum_t \gamma_t(k)\,(r_t-\hat\mu_k)^2}{\sum_t \gamma_t(k)}.
-\end{equation}
-EM finds local maxima, so we run eight random initialisations and keep the highest terminal log-likelihood. At $T \sim 5{,}000$ the recursions underflow in linear space; we run them in log space with the \emph{logsumexp} trick, vectorised across destination states. The implementation is self-contained and validated against simulated ground truth.
-
-\paragraph{Labelling.} Label switching \citep{stephens2000label} requires an ordering rule, and the natural one for returns, $\hat\mu_1 \le \dots \le \hat\mu_K$, fails here: two of the three means lie within $0.27$ bps/h of each other, well inside their sampling variability. In the parametric bootstrap of Section~\ref{ssec:inference} the $\mu$- and $\sigma$-ascending orderings disagree in $40.2\%$ of replications, and under $\mu$-ascending the $95\%$ interval for the state with $\hat\sigma = 15.6$ bps/h is $[14.6, 90.7]$, against $[14.5, 16.5]$ under $\sigma$-ascending: the first interval measures the sorting rule, not the estimator. A $\mu$-ascending rule would also permute the upper two indices of the full-sample and sub-period fits relative to each other, so that the transition regularity of Section~\ref{par:funnel} would seem not to replicate. The volatilities are separated by many standard errors, and the $\sigma$-ascending order is stable in every fit we report.
-
-\paragraph{The premium equation.} In~\eqref{eq:msar} $\mu_k$ is the regime level; the fixed-coefficient form would carry the intercept $c_k = \mu_k(1-\phi_k)$, and with $\hat\phi$ near unity $\hat c_k/(1-\hat\phi_k)$ is badly behaved, so we report $\hat\mu_k$ throughout. The \texttt{statsmodels} estimator combines an EM initialisation, a random start search and quasi-Newton optimisation.
-
+% =========================================================================
 \end{document}

@@ -78,3 +78,29 @@ def test_winsorisation_table_is_written_in_the_papers_order(tmp_path):
     # low column first, high last -- the paper's order
     body = [ln for ln in tex.splitlines() if ln.startswith("Raw")][0]
     assert body.index("12.9") < body.index("87.7"), body
+
+
+def test_winsorisation_table_rounds_once_from_the_unrounded_volatility(tmp_path):
+    """85.3514 prints as 85.4; rounding it to 85.35 first would print 85.3."""
+    from regime_engine.robustness import write_robustness_table
+    payload = {
+        "T": 3507,
+        "raw": {"ann_vol_pct": [12.84, 30.97, 87.64],
+                "ann_vol_pct_unrounded": [12.8433, 30.9731, 87.6436]},
+        "winsorised": {"ann_vol_pct": [12.56, 30.35, 85.35],
+                       "ann_vol_pct_unrounded": [12.5603, 30.3526, 85.3514]},
+        "winsor_n_clipped": 4,
+    }
+    write_robustness_table(payload, tmp_path)
+    tex = (tmp_path / "tables" / "table5_robustness.tex").read_text()
+    win = [ln for ln in tex.splitlines() if ln.startswith("Winsorised")][0]
+    assert "85.4\\%" in win and "85.3\\%" not in win, win
+    raw = [ln for ln in tex.splitlines() if ln.startswith("Raw")][0]
+    assert "12.8\\%" in raw and "87.6\\%" in raw, raw
+
+
+def test_describe_fit_keeps_the_unrounded_volatility():
+    d = describe_fit(_fitted("ascending"), T=3507)
+    assert len(d["ann_vol_pct_unrounded"]) == 3
+    for r, u in zip(d["ann_vol_pct"], d["ann_vol_pct_unrounded"]):
+        assert round(u, 2) == r

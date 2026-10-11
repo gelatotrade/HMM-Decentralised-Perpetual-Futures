@@ -11,6 +11,7 @@ PANEL ?= data/processed/panel_BTC_subsample.csv
 OUT   ?= output
 
 .PHONY: help setup analyse robustness benchmarks diagnostics bootstrap \
+        censoring longhistory premiumgap msartables oos figures a31 \
         test paper clean
 
 BOOT_REPS ?= 500
@@ -22,6 +23,13 @@ help:
 	@echo "benchmarks - out-of-family benchmarks (single Gaussian, GARCH) vs the HMMs"
 	@echo "diagnostics- residual diagnostics for the HMM and the MS-AR"
 	@echo "bootstrap  - parametric bootstrap of the K=3 HMM (\$$BOOT_REPS reps, ~35 min)"
+	@echo "censoring  - funding at the floor on three venues (Table 3, Figure 2)"
+	@echo "longhistory- censoring since December 2023, BTC and ETH (Table 4, Figure 3)"
+	@echo "premiumgap - the premium gap and its split (Tables 1, 5, C1, C2, Figure 4)"
+	@echo "msartables - the MS-AR tables from diagnostics and oos (Tables 6, C4, C5)"
+	@echo "oos        - rolling windows and upper-tail sensitivity of the MS-AR"
+	@echo "figures    - the explanatory figures (Figures 1, 5, 6, 7, 8)"
+	@echo "a31        - evidence on the high-to-low transition (\$$A31_PART; all: ~2 h)"
 	@echo "test       - run the unit test suite"
 	@echo "paper      - compile paper/paper.tex (pdflatex, falling back to tectonic)"
 	@echo "clean      - remove interim data and generated figures (keeps ALL of data/processed)"
@@ -39,8 +47,9 @@ analyse:
 robustness:
 	$(PY) regime_engine.robustness --panel $(PANEL) --out $(OUT)
 
-# The three deliverables of regime_engine.diagnostics. `benchmarks` and
-# `diagnostics` run in a couple of minutes; `bootstrap` is the slow one.
+# The three deliverables of regime_engine.diagnostics. `benchmarks` runs in well
+# under a minute and `diagnostics` in about three minutes; `bootstrap` is the
+# slow one (about 35 minutes).
 benchmarks:
 	$(PY) regime_engine.diagnostics --benchmarks --panel $(PANEL) --out $(OUT)
 
@@ -49,6 +58,34 @@ diagnostics:
 
 bootstrap:
 	$(PY) regime_engine.diagnostics --bootstrap --reps $(BOOT_REPS) --out $(OUT)
+
+# ---- the cross-venue comparison: offline from data/, seconds each ----
+censoring:
+	$(PY) regime_engine.censoring
+
+longhistory:
+	$(PY) regime_engine.longhistory
+
+premiumgap:
+	$(PY) regime_engine.premium_gap
+
+# ---- MS-AR robustness and its tables ----
+oos:
+	$(PY) regime_engine.oos
+
+msartables:
+	$(PY) regime_engine.msar_tables
+
+figures:
+	$(PY) regime_engine.paper_figures
+
+# One block of output/a31_evidence.json (profile, profile_calibrated, power,
+# power_em, garch, convergence) or all of them; the others are kept. "profile"
+# keeps its "calibrated" sub-block only while the bound and its calibration are
+# unchanged; otherwise rerun "profile_calibrated" (about 40 min) after it.
+A31_PART ?= all
+a31:
+	PYTHONPATH=src python3 scripts/a31_evidence.py --part $(A31_PART)
 
 test:
 	python3 -m pytest tests/ -q

@@ -48,7 +48,7 @@ jobs:
       - name: Unit tests
         env:
           PYTHONPATH: src
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -rs
 
       - name: Offline self-test of the recovery module
         env:

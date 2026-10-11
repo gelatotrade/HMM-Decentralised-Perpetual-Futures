@@ -1,10 +1,11 @@
-"""The paper's headline funding table must have a machine-readable source.
+"""The paper's MS-AR table must have a machine-readable source.
 
-The funding-parameter table (``paper/tables/table3_funding_params.tex``) reports
-the MS-AR(1) fit on the paper window -- regime levels, autoregressive
-coefficients with standard errors, half-lives with confidence intervals, and
-the half-life ratio with its delta-method interval. Every one of those numbers
-has to be recoverable from a shipped artifact, or the table is unreplicable.
+The MS-AR table (``paper/tables/table3b_funding_robust.tex``, written by
+``regime_engine.msar_tables``) reports the MS-AR(1) fit on the paper window --
+regime levels, autoregressive coefficients with standard errors, half-lives
+with their intervals, and the half-life ratio with its Wald test. Every one of
+those numbers has to be recoverable from a shipped artifact, or the table is
+unreplicable.
 The fit is computed inside ``run_diagnostics``, which records its parameters
 as well as the residuals taken from it.
 

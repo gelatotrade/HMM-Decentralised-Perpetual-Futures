@@ -1,5 +1,5 @@
 {
- "_note": "Funding settlements exactly at the interest floor (0.01% per 8h; 0.125 bps/h on Hyperliquid), compared as decimals, per venue and window. Premium: Hyperliquid's hourly average premium; for Binance and Bybit, the premium each settlement identifies outside the band (F - 0.05% below it), with in-band settlements treated as censored; premium_index_8h_means is an approximation from the hourly premium index. Band: (-4, +6) bps.",
+ "_note": "Funding settlements exactly at the interest floor (0.01% per 8h; 0.125 bps/h on Hyperliquid), compared as decimals, per venue and window. Premium: Hyperliquid's hourly average premium; for Binance and Bybit, the premium each settlement identifies outside the band (F - 0.05% below it), with in-band settlements treated as censored; premium_index_8h_means is an approximation from the hourly premium index. Hyperliquid also carries descriptives of its hourly funding rate (bps/h) and premium (bps; skew without bias correction) and phase_shares, the share at the floor by stamp hour mod 8 (phase 0: the 00/08/16 UTC stamps). Band: the closed interval [-4, +6] bps, on whose edges the clamp saturates.",
  "floors": {
   "8h": "0.0001",
   "hourly": "0.0000125"
@@ -38,6 +38,74 @@
      "q25_bps": -4.92819,
      "median_bps": -4.11083,
      "q75_bps": -2.257435
+    },
+    "descriptives": {
+     "funding_bps_per_hour": {
+      "n": 5001,
+      "mean": 0.05925937212557489,
+      "std": 0.10275164989038421,
+      "min": -0.693858,
+      "median": 0.11114600000000001,
+      "max": 2.326647,
+      "skew": 0.9437622666536867,
+      "excess_kurtosis": 49.88580458012998
+     },
+     "premium_bps": {
+      "n": 5001,
+      "mean": -3.147750097980404,
+      "std": 2.867287670433888,
+      "min": -10.550867,
+      "median": -4.11083,
+      "max": 23.613179,
+      "skew": 1.7057022483373092,
+      "excess_kurtosis": 3.8136256285486914
+     }
+    },
+    "phase_shares": {
+     "by_phase": {
+      "0": {
+       "n": 626,
+       "at_floor": 303,
+       "share_at_floor": 0.4840255591054313
+      },
+      "1": {
+       "n": 625,
+       "at_floor": 297,
+       "share_at_floor": 0.4752
+      },
+      "2": {
+       "n": 625,
+       "at_floor": 289,
+       "share_at_floor": 0.4624
+      },
+      "3": {
+       "n": 625,
+       "at_floor": 277,
+       "share_at_floor": 0.4432
+      },
+      "4": {
+       "n": 625,
+       "at_floor": 276,
+       "share_at_floor": 0.4416
+      },
+      "5": {
+       "n": 625,
+       "at_floor": 282,
+       "share_at_floor": 0.4512
+      },
+      "6": {
+       "n": 625,
+       "at_floor": 281,
+       "share_at_floor": 0.4496
+      },
+      "7": {
+       "n": 625,
+       "at_floor": 295,
+       "share_at_floor": 0.472
+      }
+     },
+     "min": 0.4416,
+     "max": 0.4840255591054313
     }
    },
    "later": {
@@ -57,6 +125,74 @@
      "q25_bps": -4.67226225,
      "median_bps": -3.9008290000000003,
      "q75_bps": -2.35239925
+    },
+    "descriptives": {
+     "funding_bps_per_hour": {
+      "n": 3736,
+      "mean": 0.07925524304068522,
+      "std": 0.07307663037809478,
+      "min": -0.271754,
+      "median": 0.125,
+      "max": 0.897697,
+      "skew": -0.7972005141285232,
+      "excess_kurtosis": 5.977386644519655
+     },
+     "premium_bps": {
+      "n": 3736,
+      "mean": -3.115685496788008,
+      "std": 2.5124467427283244,
+      "min": -7.174028,
+      "median": -3.9008290000000003,
+      "max": 12.181578,
+      "skew": 1.992268205451427,
+      "excess_kurtosis": 4.482315523698678
+     }
+    },
+    "phase_shares": {
+     "by_phase": {
+      "0": {
+       "n": 467,
+       "at_floor": 246,
+       "share_at_floor": 0.5267665952890792
+      },
+      "1": {
+       "n": 467,
+       "at_floor": 239,
+       "share_at_floor": 0.5117773019271948
+      },
+      "2": {
+       "n": 467,
+       "at_floor": 251,
+       "share_at_floor": 0.5374732334047109
+      },
+      "3": {
+       "n": 467,
+       "at_floor": 244,
+       "share_at_floor": 0.5224839400428265
+      },
+      "4": {
+       "n": 467,
+       "at_floor": 238,
+       "share_at_floor": 0.5096359743040685
+      },
+      "5": {
+       "n": 467,
+       "at_floor": 238,
+       "share_at_floor": 0.5096359743040685
+      },
+      "6": {
+       "n": 467,
+       "at_floor": 237,
+       "share_at_floor": 0.5074946466809421
+      },
+      "7": {
+       "n": 467,
+       "at_floor": 238,
+       "share_at_floor": 0.5096359743040685
+      }
+     },
+     "min": 0.5074946466809421,
+     "max": 0.5374732334047109
     }
    }
   },

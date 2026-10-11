@@ -1,11 +1,11 @@
 """The MS-AR one-step forecast must condition on the state *pair*.
 
-The paper's MS-AR equation (``eq:msar``, Section 2.2) is
+The paper's MS-AR equation (eq. (2), Section 6.1) is
 
     y_t - mu_{S_t} = phi_{S_t} (y_{t-1} - mu_{S_{t-1}}) + sigma_{S_t} eps_t
 
-and the paper says so explicitly: "the likelihood conditions on the pair
-(S_t, S_{t-1})", so the filter runs over K^2 state combinations. The lagged
+so the likelihood conditions on the pair (S_t, S_{t-1}), and the filter runs
+over K^2 state combinations. The lagged
 level subtracted is the level of the PREVIOUS regime. A forecast built from
 P(S_t | F_{t-1}) alone can only use mu_{S_t} on both sides, which is the
 same-state case; it drops the term phi_j (mu_j - mu_i) on every

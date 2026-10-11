@@ -5,6 +5,7 @@ assembled by a pure function, and those functions are pinned here against the
 shipped data and artifacts. A figure can then be redrawn freely without its
 content drifting from the numbers the paper prints beside it.
 """
+import numpy as np
 import pytest
 
 from regime_engine import censoring as c
@@ -62,12 +63,39 @@ class TestWindows:
         assert est["start"] < sub["start"] < sub["end"] <= est["end"]
         assert sub["hours"] == 3507
 
+    def test_the_common_rule_span_is_the_long_history_s(self, spans):
+        w = spans["common rule"]
+        assert (str(w["start"]), str(w["end"])) == ("2023-12-11 23:00:00+00:00",
+                                                     "2026-10-01 00:00:00+00:00")
+        assert w["hours"] == 24577
+
     def test_availability_rows_cover_the_series_actually_shipped(self):
         rows = {r["label"]: r for r in pf.availability_rows()}
         assert str(rows["two-hourly prices"]["end"]).startswith("2026-09-30 22:00")
         assert str(rows["hourly prices"]["start"]).startswith("2025-12-03 05:00")
         assert str(rows["hourly prices"]["end"]).startswith("2026-08-27 08:00")
-        assert str(rows["funding and premium"]["end"]).startswith("2026-10-01 00:00")
+        hl = rows["hyperliquid funding and premium"]
+        assert str(hl["start"]).startswith("2023-05-12 00:00")
+        assert str(hl["end"]).startswith("2026-10-01 00:00")
+        assert str(hl["common_rule_from"]).startswith("2023-12-11 23:00")
+        assert str(rows["exchange settlements"]["start"]) < "2023-05-12"
+        assert str(rows["exchange settlements"]["end"]).startswith("2026-10-01 00:00")
+        prem = rows["exchange premium index"]
+        assert str(prem["start"]).startswith("2023-12-11 17:00")
+        assert str(prem["end"]).startswith("2026-10-01 00:00")
+
+    def test_the_price_line_is_the_binance_perpetual_over_the_long_history(self):
+        px = pf.price_history()
+        assert str(px["time"].iloc[0]).startswith("2023-12-11 17:00")
+        assert str(px["time"].iloc[-1]).startswith("2026-10-01 00:00")
+        assert 15_000 < px["close"].min() < px["close"].max() < 200_000
+
+    def test_the_windows_figure_prints_its_text_at_seven_points(self, tmp_path, monkeypatch):
+        from test_figure_print_sizes import printed_min_pt
+        monkeypatch.setattr(pf, "FIG_OUT", tmp_path)
+        monkeypatch.setattr(pf, "FIG_PAPER", tmp_path / "paper")
+        pdf = pf.figure_windows()
+        assert printed_min_pt(pdf) >= 7.0
 
     def test_price_extremes_are_the_ones_the_abstract_quotes(self):
         hi, lo = pf.price_extremes()
@@ -95,8 +123,52 @@ class TestTransitionGeometry:
         assert round(geo["hours_high"], -1) == 1000
         assert round(100 * geo["bound_high_low"], 2) == 0.30
 
+    def test_the_high_to_low_label_does_not_present_the_imposed_zero_as_a_count(self):
+        label = pf.high_low_label()
+        assert "entries" not in label and "rule of three" not in label
+        assert "imposed" in label and "profile likelihood, sub-period" in label
+
+    def test_the_high_to_low_label_quotes_the_profile_likelihood_bound(self, tmp_path):
+        import json
+        ev = json.loads(pf.A31_EVIDENCE.read_text())
+        b = ev["profile_likelihood"]["upper_bound_one_sided_95"]
+        assert f"bound {100 * b:.2f}%/h" in pf.high_low_label()
+        assert "0.64%/h" in pf.high_low_label()
+        fake = tmp_path / "a31.json"
+        fake.write_text(json.dumps({"profile_likelihood": {"upper_bound_one_sided_95": 0.0123}}))
+        assert "bound 1.23%/h" in pf.high_low_label(fake)
+
     def test_state_volatilities_are_the_abstract_s(self, geo):
         assert [round(v, 1) for v in geo["vol_pct"]] == [14.6, 33.3, 88.4]
+
+
+class TestTransitionsLayout:
+    def test_no_arrow_runs_through_a_label(self):
+        """Every probability label stays at least a point clear of every arrow."""
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import FancyArrowPatch
+
+        fig = pf.draw_transitions()
+        try:
+            fig.canvas.draw()
+            renderer = fig.canvas.get_renderer()
+            ax = fig.axes[0]
+            arrows = [a for a in ax.patches if isinstance(a, FancyArrowPatch)]
+            labels = [t for t in ax.texts if "[" in t.get_text() or "\u2192" in t.get_text()]
+            assert len(arrows) == 6 and len(labels) == 6
+            pad = fig.dpi / 72
+            for text in labels:
+                box = text.get_window_extent(renderer).padded(pad)
+                for arrow in arrows:
+                    display = arrow.get_transform().transform_path(arrow.get_path())
+                    for line in display.to_polygons(closed_only=False):
+                        steps = np.linspace(0.0, 1.0, 25)[:, None]
+                        for a, b in zip(line[:-1], line[1:]):
+                            x, y = (a + steps * (b - a)).T
+                            inside = (x >= box.x0) & (x <= box.x1) & (y >= box.y0) & (y <= box.y1)
+                            assert not inside.any(), text.get_text()
+        finally:
+            plt.close(fig)
 
 
 class TestOctoberHour:
@@ -173,3 +245,22 @@ class TestTwoOptima:
         blocks = pf.optima_by_block()
         assert [b["inferior"] for b in blocks] == [24, 25, 24, 20, 25, 30]
         assert all(b["best"] + b["inferior"] == 40 and b["failures"] == 0 for b in blocks)
+
+
+class TestWhatReachesThePaper:
+    """Only the figures the paper prints are copied to paper/figures/."""
+
+    @pytest.mark.parametrize("draw,stem", [("figure_october", "fig7_october_hour"),
+                                           ("figure_rolling", "fig8_rolling")])
+    def test_the_linear_delta_figures_stay_in_output(self, tmp_path, monkeypatch, draw, stem):
+        monkeypatch.setattr(pf, "FIG_OUT", tmp_path / "out")
+        monkeypatch.setattr(pf, "FIG_PAPER", tmp_path / "paper")
+        pdf = getattr(pf, draw)()
+        assert pdf == tmp_path / "out" / f"{stem}.pdf" and pdf.exists()
+        assert not (tmp_path / "paper" / f"{stem}.pdf").exists()
+
+    def test_a_printed_figure_is_copied(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(pf, "FIG_OUT", tmp_path / "out")
+        monkeypatch.setattr(pf, "FIG_PAPER", tmp_path / "paper")
+        pf.figure_optima()
+        assert (tmp_path / "paper" / "fig9_optima.pdf").exists()

@@ -36,7 +36,9 @@ matplotlib.use("Agg")           # headless: never require a display
 import matplotlib.dates as mdates  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.colors import to_rgba  # noqa: E402
+from matplotlib.ticker import StrMethodFormatter  # noqa: E402
 
+from . import hmm_batch  # noqa: E402
 from .funding import FLOOR_BPS_PER_HOUR, clamp_share  # noqa: E402
 from .hmm import MSAR_SEED, GaussianHMM  # noqa: E402
 from .msar import fit_msar_premium  # noqa: E402
@@ -45,7 +47,10 @@ from .paths import DEFAULT_OUT  # noqa: E402
 
 HMM_SEED_BASE = 42          # per-K seed is HMM_SEED_BASE + K
 HMM_N_STARTS = 8
-HMM_N_ITER = 150
+# Iteration cap per EM run. A safeguard only: every start runs to the
+# tolerance rule and the selected one is polished (GaussianHMM.fit), and on the
+# shipped panel no run comes near the cap.
+HMM_N_ITER = 100_000
 
 # Output locations. Default to the *repository's* output/ directory, not a
 # directory inside the installed package; --out overrides at runtime.
@@ -82,11 +87,22 @@ plt.rcParams.update({
     "savefig.dpi": 200,
     "savefig.bbox": "tight",
     "lines.linewidth": 1.1,
+    # Math (R, sigma-hat, A-hat) in the serif face of the text around it.
+    "mathtext.fontset": "dejavuserif",
     # Embed TrueType (Type 42) rather than Type 3 fonts: Type 3 is accepted by
     # SSRN but rejected by IEEE/ACM submission systems and by PDF/A validators.
     "pdf.fonttype": 42,
     "ps.fonttype": 42,
 })
+
+#: Figures 1-3 are drawn at the width the paper prints them (15.8 cm), with no
+#: text below 7.5 pt, so that text prints at 7 pt or more after savefig's padding.
+FIG_WIDTH_IN = 6.2
+SMALL_PT = 7.5
+TITLE_PT = 8.5
+PAPER_STYLE = {"font.size": 8, "axes.labelsize": 8, "axes.titlesize": TITLE_PT,
+               "xtick.labelsize": SMALL_PT, "ytick.labelsize": SMALL_PT,
+               "legend.fontsize": SMALL_PT}
 
 REGIME_COLORS_3 = ["#2E86AB", "#A8A8A8", "#C73E1D"]   # low / moderate / high volatility
 REGIME_COLORS_2 = ["#2E86AB", "#C73E1D"]
@@ -115,10 +131,28 @@ def _regime_labels(hmm: GaussianHMM) -> list:
     else:                                   # pragma: no cover - K in (2, 3)
         vol_words = [f"level {k + 1}" for k in range(K)]
     return [
-        f"Regime {k + 1} — {vol_words[k]} volatility "
+        f"State {k + 1} \u2014 {vol_words[k]} volatility "
         f"($\\hat\\sigma$ = {hmm.sigma[k] * 1e4:.1f} bps/h)"
         for k in range(K)
     ]
+
+
+#: Axis labels of the dashboard's funding and premium panels.
+FUNDING_AXIS_LABEL = "Funding rate (bps/h)"
+PREMIUM_PANEL_LABEL = "Premium\nregime"
+#: Shading of the dominant return state in panel (a), and of its legend keys.
+STATE_SHADE_ALPHA = 0.3
+
+
+def _signed(x: float, fmt: str) -> str:
+    """A number with a typographic minus, outside mathtext's binary spacing."""
+    return format(x, fmt).replace("-", "\u2212")
+
+
+def _component_label(k: int, mu_bps: float, sigma_bps: float) -> str:
+    """Legend label of state k's mixture component in the distribution figure."""
+    return (f"State {k + 1}: $\\hat\\mu$ = {_signed(mu_bps, '.2f')}, "
+            f"$\\hat\\sigma$ = {_signed(sigma_bps, '.1f')}")
 
 
 def _annotation_color(cmap_name: str, value: float, vmin: float = 0.0, vmax: float = 1.0) -> str:
@@ -141,6 +175,7 @@ def estimator_fingerprint(n_chars: int = 12) -> str:
     """
     material = "\n".join([
         inspect.getsource(GaussianHMM),
+        inspect.getsource(hmm_batch),
         repr((HMM_SEED_BASE, HMM_N_STARTS, HMM_N_ITER)),
     ])
     return hashlib.sha256(material.encode("utf-8")).hexdigest()[:n_chars]
@@ -186,8 +221,12 @@ def fit_return_hmms(panel: pd.DataFrame, use_cache: bool = True) -> dict:
             "bic": hmm.bic(len(r)),
             "seed": HMM_SEED_BASE + K,
         }
+        rep = hmm.fit_report_
         print(f"K={K}: LL={hmm.log_likelihood_:.4f}  AIC={hmm.aic():.2f}  "
               f"BIC={hmm.bic(len(r)):.2f}  (seed {HMM_SEED_BASE + K})")
+        print(f"      converged     = {hmm.converged_} (start {rep['selected_start']}, "
+              f"{rep['n_starts_converged']}/{rep['n_starts']} starts to tol, "
+              f"polish {rep['polish']['iterations']} iterations)")
         print(f"      mu (bps/h)    = {hmm.mu * 1e4}")
         print(f"      sigma (bps/h) = {hmm.sigma * 1e4}")
         print(f"      diag(A)       = {np.diag(hmm.A)}")
@@ -256,15 +295,11 @@ def figure_regime_dashboard(panel: pd.DataFrame, ret_res: dict, fund_res: dict, 
     post = ret_res[K]["filtered"]
     fund_post = fund_res["filtered"]
 
-    fig = plt.figure(figsize=(11, 9.4))
+    plt.rcParams.update(PAPER_STYLE)
+    fig = plt.figure(figsize=(FIG_WIDTH_IN, 7.4))
     gs = fig.add_gridspec(
         5, 1, height_ratios=[2.5, 0.35, 2.0, 0.35, 1.4],
-        hspace=0.55,
-    )
-    fig.suptitle(
-        "BTC perpetual on Hyperliquid — return regimes "
-        f"(K={K}) and funding regimes",
-        x=0.125, ha="left", fontweight="bold", fontsize=11.5, y=0.955,
+        hspace=0.75,
     )
 
     # --- Panel A: price + dominant-regime background --------------------
@@ -278,18 +313,20 @@ def figure_regime_dashboard(panel: pd.DataFrame, ret_res: dict, fund_res: dict, 
     cmap = REGIME_COLORS_3 if K == 3 else REGIME_COLORS_2
     for k in range(K):
         mask = dominant_smooth == k
-        axA.fill_between(times, 0, price.max() * 1.02,
-                         where=mask, color=cmap[k], alpha=0.13, lw=0)
+        axA.fill_between(times, 0, price.max() * 1.12,
+                         where=mask, color=cmap[k], alpha=STATE_SHADE_ALPHA, lw=0)
     axA.set_ylabel("BTC close (USD)")
-    axA.set_ylim(price.min() * 0.98, price.max() * 1.02)
+    axA.yaxis.set_major_formatter(StrMethodFormatter("{x:,.0f}"))
+    axA.set_ylim(price.min() * 0.98, price.max() * 1.12)   # room for the legend
     axA.set_xlim(times[0], times[-1])
-    axA.set_title("(a) BTC price with median-filtered dominant return regime",
-                  loc="left", fontsize=9, fontweight="bold", pad=4)
+    axA.set_title("(a) BTC price, shaded by the dominant return state (7-hour median filter)",
+                  loc="left", fontsize=TITLE_PT, fontweight="bold", pad=4)
 
     from matplotlib.patches import Patch
     labels = _regime_labels(ret_res[K]["model"])
-    handles = [Patch(facecolor=cmap[k], alpha=0.45, label=labels[k]) for k in range(K)]
-    axA.legend(handles=handles, loc="upper right", fontsize=8, frameon=False)
+    handles = [Patch(facecolor=cmap[k], alpha=STATE_SHADE_ALPHA, label=labels[k])
+               for k in range(K)]
+    axA.legend(handles=handles, loc="upper right", fontsize=SMALL_PT, frameon=False)
 
     # --- Panel B: return regime posterior stripe -------------------------
     axB = fig.add_subplot(gs[1], sharex=axA)
@@ -301,9 +338,9 @@ def figure_regime_dashboard(panel: pd.DataFrame, ret_res: dict, fund_res: dict, 
     axB.imshow(rgb[None, :, :], aspect="auto",
                extent=[mdates.date2num(times[0]), mdates.date2num(times[-1]), 0, 1])
     axB.set_yticks([])
-    axB.set_ylabel("Return\nregime", rotation=0, ha="right", va="center", fontsize=9)
-    axB.set_title("(b) Filtered posterior $P(S_t=k\\,|\\,\\mathcal{F}_t)$ — return HMM",
-                  loc="left", fontsize=9, fontweight="bold", pad=4)
+    axB.set_ylabel("Return\nstate", rotation=0, ha="right", va="center", fontsize=SMALL_PT)
+    axB.set_title("(b) Filtered posterior of the return state (HMM)",
+                  loc="left", fontsize=TITLE_PT, fontweight="bold", pad=4)
 
     # --- Panel C: funding rate -------------------------------------------
     axC = fig.add_subplot(gs[2], sharex=axA)
@@ -314,10 +351,9 @@ def figure_regime_dashboard(panel: pd.DataFrame, ret_res: dict, fund_res: dict, 
                      color="#2E86AB", alpha=0.25, lw=0)
     axC.fill_between(times, 0, funding, where=funding < 0,
                      color="#C73E1D", alpha=0.25, lw=0)
-    axC.set_ylabel("Funding rate (bps / hour)")
-    axC.set_title(f"(c) Hourly funding rate, BTC perp "
-                  f"(dotted: {FLOOR_BPS_PER_HOUR} bps/h interest floor)",
-                  loc="left", fontsize=9, fontweight="bold", pad=4)
+    axC.set_ylabel(FUNDING_AXIS_LABEL)
+    axC.set_title(f"(c) Hourly funding rate (dotted: {FLOOR_BPS_PER_HOUR} bps/h floor)",
+                  loc="left", fontsize=TITLE_PT, fontweight="bold", pad=4)
     # cap visualisation y-range to 0.5/99.5 percentile to keep readability,
     # with headroom above the floor line so the annotation never sits on data
     lo, hi = np.percentile(funding, [0.5, 99.5])
@@ -336,10 +372,10 @@ def figure_regime_dashboard(panel: pd.DataFrame, ret_res: dict, fund_res: dict, 
     axD.imshow(rgbf[None, :, :], aspect="auto",
                extent=[mdates.date2num(times[0]), mdates.date2num(times[-1]), 0, 1])
     axD.set_yticks([])
-    axD.set_ylabel("Funding\nregime", rotation=0, ha="right", va="center", fontsize=9)
-    axD.set_title("(d) Filtered posterior — MS-AR(1) on premium "
-                  "(teal = calm, red = stressed)",
-                  loc="left", fontsize=9, fontweight="bold", pad=4)
+    axD.set_ylabel(PREMIUM_PANEL_LABEL, rotation=0, ha="right", va="center",
+                   fontsize=SMALL_PT)
+    axD.set_title("(d) MS-AR(1) filtered regime (teal calm, red stressed)",
+                  loc="left", fontsize=TITLE_PT, fontweight="bold", pad=4)
 
     # --- Panel E: rolling realised vol -----------------------------------
     axE = fig.add_subplot(gs[4], sharex=axA)
@@ -347,19 +383,20 @@ def figure_regime_dashboard(panel: pd.DataFrame, ret_res: dict, fund_res: dict, 
         pd.Series(panel["log_return"].values ** 2)
         .rolling(24).mean().pow(0.5).values * np.sqrt(24 * 365) * 100  # annualised %
     )
-    # Regime-implied conditional vol: within-regime term only, filtered state.
+    # State-implied conditional vol: within-state term only, filtered state.
     hmm = ret_res[K]["model"]
     cond_var = (post * (hmm.sigma ** 2)[None, :]).sum(axis=1)
     cond_vol_h = np.sqrt(cond_var) * np.sqrt(24 * 365) * 100
     cond_vol_smooth = pd.Series(cond_vol_h).rolling(24, min_periods=1).mean().values
-    axE.plot(times, rv, color="#222", lw=0.7, label="24h realised vol", alpha=0.85)
+    axE.plot(times, rv, color="#222", lw=0.7, label="24-hour realised vol", alpha=0.85)
     axE.plot(times, cond_vol_smooth, color="#C73E1D", lw=1.3,
-             label="Regime-implied vol (within-regime, 24h-smoothed)")
+             label="State-implied vol (24-hour mean)")
     axE.set_ylabel("Annualised vol (%)")
+    axE.set_ylim(0, np.nanmax(rv) * 1.3)        # room for the legend
     axE.set_xlabel("Date (UTC)")
-    axE.legend(loc="upper right", fontsize=8, frameon=False)
-    axE.set_title("(e) Realised vs. regime-implied volatility",
-                  loc="left", fontsize=9, fontweight="bold", pad=4)
+    axE.legend(loc="upper right", fontsize=SMALL_PT, frameon=False)
+    axE.set_title("(e) Realised vs. state-implied volatility",
+                  loc="left", fontsize=TITLE_PT, fontweight="bold", pad=4)
 
     for ax in (axA, axB, axC, axD, axE):
         ax.xaxis.set_major_locator(mdates.MonthLocator())
@@ -379,7 +416,9 @@ def figure_regime_distributions(panel: pd.DataFrame, ret_res: dict, K: int = 3):
     hmm = ret_res[K]["model"]
     cmap = REGIME_COLORS_3 if K == 3 else REGIME_COLORS_2
 
-    fig, axes = plt.subplots(1, 2, figsize=(10.5, 3.8))
+    plt.rcParams.update(PAPER_STYLE)
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH_IN, 3.0),
+                             gridspec_kw={"width_ratios": [1.5, 1]})
 
     # Left: empirical density vs fitted mixture
     ax = axes[0]
@@ -390,18 +429,18 @@ def figure_regime_distributions(panel: pd.DataFrame, ret_res: dict, K: int = 3):
     from scipy.stats import norm
     for k in range(K):
         comp = pi_stat[k] * norm.pdf(grid, loc=hmm.mu[k] * 1e4, scale=hmm.sigma[k] * 1e4)
-        label = (fr"Reg. {k+1}: $\mu={hmm.mu[k]*1e4:.2f}$, "
-                 fr"$\sigma={hmm.sigma[k]*1e4:.1f}$ bps")
+        label = _component_label(k, hmm.mu[k] * 1e4, hmm.sigma[k] * 1e4)
         ax.plot(grid, comp, lw=1.2, color=cmap[k], label=label)
         total += comp
-    ax.plot(grid, total, "k--", lw=1.0, label="Mixture (stationary)")
+    ax.plot(grid, total, "k--", lw=1.0, label="Mixture")
     ax.set_xlim(np.percentile(r, 0.5), np.percentile(r, 99.5))
-    ax.set_xlabel("Hourly log-return (bps)")
+    ax.set_xlabel("Hourly log-return (bps; 0.5-99.5 pct shown)")
     ax.set_ylabel("Density")
-    ax.set_title("(a) Stationary mixture vs. empirical distribution "
-                 "(x-axis clipped to 0.5/99.5 pct)", loc="left", fontsize=9.5, pad=6)
-    ax.set_ylim(0, ax.get_ylim()[1] * 1.22)   # headroom so the legend clears the peak
-    ax.legend(fontsize=7.5, frameon=False, loc="upper left")
+    ax.set_title("(a) Stationary mixture vs. data", loc="left", fontsize=TITLE_PT,
+                 fontweight="bold", pad=6)
+    ax.set_ylim(0, ax.get_ylim()[1] * 1.45)   # headroom so the legend clears the peak
+    ax.legend(fontsize=SMALL_PT, frameon=False, loc="upper left", title="bps per hour",
+              title_fontsize=SMALL_PT, alignment="left")
 
     # Right: transition matrix as heatmap (sequential colormap)
     ax = axes[1]
@@ -410,18 +449,19 @@ def figure_regime_distributions(panel: pd.DataFrame, ret_res: dict, K: int = 3):
     for i in range(K):
         for j in range(K):
             ax.text(j, i, f"{A[i, j]:.3f}", ha="center", va="center",
-                    color=_annotation_color(PROB_CMAP, A[i, j]), fontsize=10)
+                    color=_annotation_color(PROB_CMAP, A[i, j]), fontsize=8)
     ax.set_xticks(range(K))
     ax.set_yticks(range(K))
-    labels = [f"Reg. {k+1}" for k in range(K)]
+    labels = [f"State {k+1}" for k in range(K)]
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
     ax.set_xlabel("To")
     ax.set_ylabel("From")
     ax.grid(False)
-    ax.set_title("(b) Estimated transition matrix $\\hat A$",
-                 loc="left", fontsize=9.5, pad=6)
-    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    ax.set_title("(b) Transition matrix $\\hat A$",
+                 loc="left", fontsize=TITLE_PT, fontweight="bold", pad=6)
+    cb = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cb.ax.tick_params(labelsize=SMALL_PT)
 
     fig.tight_layout()
     _save_figure(fig, "fig2_distributions")
@@ -436,7 +476,8 @@ def figure_funding_dynamics(panel: pd.DataFrame, fund_res: dict):
     smoothed = fund_res["smoothed"]
     fund_cmap = ["#1B998B", "#E84855"]
 
-    fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.0))
+    plt.rcParams.update(PAPER_STYLE)
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH_IN, 3.3))
 
     # (a) Premium phase plot coloured by regime
     ax = axes[0]
@@ -445,8 +486,7 @@ def figure_funding_dynamics(panel: pd.DataFrame, fund_res: dict):
     for k in range(2):
         mask = (r_idx == k) & valid
         ax.scatter(y[:-1][mask[1:]], y[1:][mask[1:]],
-                   s=4, c=fund_cmap[k], alpha=0.35,
-                   label=f"Regime {k+1}")
+                   s=2, c=fund_cmap[k], alpha=0.35)
     # AR(1) lines. statsmodels estimates the MEAN-ADJUSTED form
     #     y_t - mu_{S_t} = phi_{S_t} (y_{t-1} - mu_{S_{t-1}}) + sigma_{S_t} eps_t
     # so const[k] is the regime mean mu_k and, within regime k
@@ -459,13 +499,14 @@ def figure_funding_dynamics(panel: pd.DataFrame, fund_res: dict):
     for k in range(2):
         line = mu[k] * (1.0 - phi[k]) + phi[k] * grid
         ax.plot(grid, line, color=fund_cmap[k], lw=1.2,
-                label=fr"AR(1) reg. {k+1}: $\phi={phi[k]:.3f}$, $\bar y={mu[k]:.2f}$")
-    ax.plot(grid, grid, "k--", lw=0.6, alpha=0.5, label="$y_t = y_{t-1}$")
-    ax.set_xlabel("premium$_{t-1}$ (bps)")
-    ax.set_ylabel("premium$_{t}$ (bps)")
-    ax.set_title("(a) Premium phase plot, coloured by smoothed regime",
-                 loc="left", fontsize=9.5, pad=6)
-    ax.legend(fontsize=7.5, frameon=False, loc="lower right")
+                label=fr"reg. {k+1}: $\phi={phi[k]:.3f}$, $\bar y={mu[k]:.2f}$")
+    ax.plot(grid, grid, "k--", lw=0.6, alpha=0.5, label="45-degree line")
+    ax.set_xlabel("premium in hour t \u2212 1 (bps)")
+    ax.set_ylabel("premium in hour t (bps)")
+    ax.set_title("(a) Premium phase plot by smoothed regime",
+                 loc="left", fontsize=TITLE_PT, pad=6)
+    ax.legend(fontsize=SMALL_PT, frameon=False, loc="upper left", markerscale=3,
+              handlelength=1.4)
     lo, hi = np.percentile(y, [0.5, 99.5])
     ax.set_xlim(lo, hi)
     ax.set_ylim(lo, hi)
@@ -485,11 +526,11 @@ def figure_funding_dynamics(panel: pd.DataFrame, fund_res: dict):
     for b, hl, e in zip(bars, half_lives, err):
         top = hl + (e if np.isfinite(e) else 0.0)
         ax.text(b.get_x() + b.get_width() / 2, top + 0.035 * y_top,
-                f"{hl:.1f} h", ha="center", fontsize=10, fontweight="bold")
+                f"{hl:.1f} h", ha="center", fontsize=8, fontweight="bold")
     ax.set_ylabel("Mean-reversion half-life (hours)")
     ax.set_ylim(0, y_top)
-    ax.set_title(r"(b) Implied half-life $\tau=\ln 0.5/\ln|\phi_k|$, "
-                 "delta-method 95% CI", loc="left", fontsize=9.5, pad=6)
+    ax.set_title("(b) Half-life ln 0.5 / ln|\u03c6|, 95% CI",
+                 loc="left", fontsize=TITLE_PT, pad=6)
     fig.tight_layout()
     _save_figure(fig, "fig3_funding_dynamics")
     plt.close(fig)
@@ -622,6 +663,8 @@ def write_summary(panel: pd.DataFrame, ret_res: dict, fund_res: dict,
             "logL": float(hmm.log_likelihood_),
             "AIC": float(hmm.aic()),
             "BIC": float(hmm.bic(T)),
+            "converged": bool(hmm.converged_),
+            "convergence": hmm.fit_report_,
         }
 
     funding_bps = panel["funding_bps"].values
@@ -731,9 +774,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
                     help=f"seed for the MS-AR start search (default: {MSAR_SEED})")
     ap.add_argument("--funding-figure-paper-window", action="store_true",
                     help="regenerate fig3 on the paper's 2 Oct 2025 - 28 Apr 2026 "
-                         "premium window, the window of "
-                         "paper/tables/table3_funding_params.tex (the funding series "
-                         "is not retention-bound), and exit")
+                         "premium window, the window of the paper's MS-AR table "
+                         "(the funding series is not retention-bound), and exit")
     ap.add_argument("--no-cache", action="store_true",
                     help="ignore any cached HMM fit and refit from scratch")
     return ap

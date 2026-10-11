@@ -65,11 +65,22 @@ class TestWindows:
 
 
 class TestPremium:
-    def test_location_counts_the_open_band(self):
+    def test_location_counts_the_closed_band(self):
+        """The clamp saturates on the band's edges, so the rule pays the floor there too."""
         out = c.premium_location(pd.Series([-5.0, -4.0, -3.0, 0.0, 6.0, 7.0]))
         assert out["n"] == 6
-        assert out["share_in_band"] == pytest.approx(2 / 6)
+        assert out["share_in_band"] == pytest.approx(4 / 6)
         assert out["mean_bps"] == pytest.approx(1 / 6)
+
+    def test_phase_shares_partition_the_hours(self):
+        times = pd.Series(pd.date_range("2026-01-01 00:00", periods=16, freq="1h", tz="UTC"))
+        rates = ["0.0000125"] * 8 + ["0.00001"] * 7 + ["0.0000125"]
+        out = c.phase_shares(times, rates, c.FLOOR_HOURLY)
+        assert sorted(out["by_phase"]) == [str(k) for k in range(8)]
+        assert out["by_phase"]["0"] == {"n": 2, "at_floor": 1, "share_at_floor": 0.5}
+        assert out["by_phase"]["7"]["share_at_floor"] == 1.0
+        assert sum(d["at_floor"] for d in out["by_phase"].values()) == 9
+        assert (out["min"], out["max"]) == (0.5, 1.0)
 
     def test_eight_hour_means_align_to_settlement_blocks(self):
         times = pd.date_range("2026-01-01 00:00", periods=16, freq="1h", tz="UTC")
@@ -138,6 +149,37 @@ class TestShippedData:
             assert prem["source"] == "settlements"
             assert prem["q25_bps"] < prem["median_bps"] < prem["q75_bps"] < -4
 
+    def test_hyperliquid_descriptives_on_the_paper_window(self, payload):
+        d = payload["venues"]["hyperliquid"]["paper"]["descriptives"]
+        f, p = d["funding_bps_per_hour"], d["premium_bps"]
+        assert f["n"] == p["n"] == 5001
+        assert [round(f[k], 3) for k in ("mean", "std", "min", "median", "max")] == [
+            0.059, 0.103, -0.694, 0.111, 2.327]
+        assert round(f["skew"], 2) == 0.94
+        assert [round(p[k], 2) for k in ("mean", "std", "min", "median", "max", "skew")] == [
+            -3.15, 2.87, -10.55, -4.11, 23.61, 1.71]
+
+    def test_the_phase_shares_bracket_the_hourly_share(self, payload):
+        hl = payload["venues"]["hyperliquid"]
+        for w in ("paper", "later"):
+            ph = hl[w]["phase_shares"]
+            assert sum(d["n"] for d in ph["by_phase"].values()) == hl[w]["n"]
+            assert sum(d["at_floor"] for d in ph["by_phase"].values()) == hl[w]["at_floor"]
+            assert ph["min"] <= hl[w]["share_at_floor"] <= ph["max"]
+            # phase 0 holds the 00, 08 and 16 UTC stamps
+            stamped = payload["venues"]["hyperliquid_at_8h_stamps"][w]
+            assert ph["by_phase"]["0"]["share_at_floor"] == stamped["share_at_floor"]
+        paper = hl["paper"]["phase_shares"]
+        assert (round(100 * paper["min"], 1), round(100 * paper["max"], 1)) == (44.2, 48.4)
+
     def test_table_regenerates_from_the_artifact(self, payload):
         shipped = (c.PAPER_TABLE).read_text()
         assert c.write_table(payload) == shipped
+
+
+def test_the_table_names_its_quartile_column_and_marks_empty_cells():
+    """The column prints [Q1, Q3], so it is headed Quartiles; a row without a premium shows --."""
+    text = c.write_table(c.build_payload())
+    assert "& Median & Quartiles &" in text and "IQR" not in text
+    stamped = next(line for line in text.splitlines() if "at 00/08/16 UTC" in line)
+    assert "& -- & -- &" in stamped

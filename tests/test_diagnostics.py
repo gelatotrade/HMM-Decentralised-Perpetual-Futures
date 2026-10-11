@@ -201,6 +201,68 @@ def test_rule_of_three_bound_is_reported(boot):
     assert abs(b["rule_of_three_bound_per_hour"] - expected) < 0.25 * expected
 
 
+def test_rule_of_three_counts_the_high_state_in_any_input_order():
+    """The bound counts hours of the highest-sigma state, wherever the caller puts it.
+
+    The full-sample archive is mu-ascending, where the high state is index 0; the
+    sub-period fit is sigma-ascending, where it is the last index. Counting index 0
+    in the second case counts the LOW state.
+    """
+    A = np.array([[0.95, 0.04, 0.01],                 # sigma-ascending: low, moderate, high
+                  [0.03, 0.93, 0.04],
+                  [0.00, 0.25, 0.75]])
+    mu = np.array([0.2e-4, 0.0, -5.0e-4])
+    sigma = np.array([15e-4, 35e-4, 90e-4])
+    pi = _stationary(A)
+    assert pi[0] > 2 * pi[2]                          # the two counts differ
+    T = 3000
+    b = bootstrap_hmm({"mu": mu, "sigma": sigma, "A": A}, T=T, n_reps=4, seed=7,
+                      n_jobs=4, progress=False)["boundary"]
+    assert b["high_state_index_input_order"] == 2
+    expected = 3.0 / (pi[2] * T)
+    assert abs(b["rule_of_three_bound_per_hour"] - expected) < 0.25 * expected
+    wrong = 3.0 / (pi[0] * T)
+    assert abs(b["rule_of_three_bound_per_hour"] - wrong) > 0.25 * wrong
+
+
+def _bootstrap_inputs(tmp_path):
+    """A full-sample archive (mu-ascending, diag and pi only) and a summary.json."""
+    from regime_engine.diagnostics import FULLSAMPLE_JSON
+    o_mu = np.argsort(MU_TRUE)
+    A_mu = A_TRUE[np.ix_(o_mu, o_mu)]
+    zero = np.argwhere(A_mu == 0)[0]
+    assert tuple(zero) == (0, 1)
+    full = {"n_obs": 400, "return_K3": {
+        "mu_bps_per_hour": (MU_TRUE[o_mu] * 1e4).tolist(),
+        "sigma_bps_per_hour": (SIGMA_TRUE[o_mu] * 1e4).tolist(),
+        "diag_A": np.diag(A_mu).tolist(), "stationary": _stationary(A_mu).tolist()}}
+    o_sg = np.argsort(SIGMA_TRUE)
+    sub = {"n_obs": 400, "return_K3": {
+        "mu_bps_per_hour": (MU_TRUE[o_sg] * 1e4).tolist(),
+        "sigma_bps_per_hour": (SIGMA_TRUE[o_sg] * 1e4).tolist(),
+        "A": A_TRUE[np.ix_(o_sg, o_sg)].tolist()}}
+    (tmp_path / FULLSAMPLE_JSON).write_text(json.dumps(full))
+    (tmp_path / "summary.json").write_text(json.dumps(sub))
+
+
+def test_run_bootstrap_can_recompute_one_block_and_keep_the_others(tmp_path):
+    from regime_engine.diagnostics import run_bootstrap
+    _bootstrap_inputs(tmp_path)
+    kw = dict(n_reps=2, n_jobs=1, multistart_check=0, power_reps=1)
+    first = run_bootstrap(tmp_path, **kw)
+    before = json.loads((tmp_path / "bootstrap_hmm.json").read_text())
+    second = run_bootstrap(tmp_path, seed=99, blocks=("sub_sample",), **kw)
+    after = json.loads((tmp_path / "bootstrap_hmm.json").read_text())
+    assert after["full_sample"] == before["full_sample"]
+    assert after["boundary_power_full_sample"] == before["boundary_power_full_sample"]
+    assert after["sub_sample"]["seed"] == 100 != before["sub_sample"]["seed"]
+    assert after["blocks_kept_from_previous_run"] == ["full_sample", "power"]
+    assert "sub_sample" in after["block_provenance"]
+    assert first["full_sample"]["T"] == second["full_sample"]["T"] == 400
+    with pytest.raises(ValueError):
+        run_bootstrap(tmp_path, blocks=("nonsense",), **kw)
+
+
 def test_label_switching_signature_is_computed_from_both_orderings():
     mu = np.array([-5.0, 0.2, 0.4])
     sigma = np.array([90.0, 15.0, 35.0])

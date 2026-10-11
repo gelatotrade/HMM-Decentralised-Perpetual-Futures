@@ -29,6 +29,10 @@ lz4==4.4.5               # decompresses the optional S3 files (or use the lz4 CL
 # Dev / quality
 pytest==8.4.2
 ruff==0.15.21            # lint + format
+pyyaml==6.0.3            # reads CITATION.cff in tests/test_manuscript_structure.py
+# optional cross-check only: arch==7.2.0 (installed when the archived
+# benchmarks.json was written and recorded in its "software"; two GARCH
+# cross-check tests use it when present; not needed for any number)
 
 # Transitive versions actually installed on the interpreter that produced the
 # shipped outputs (CPython 3.9.6, macOS/arm64), read from importlib.metadata:

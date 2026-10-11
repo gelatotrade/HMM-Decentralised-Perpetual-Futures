@@ -1,12 +1,12 @@
 [project]
 name = "regime-engine"
-version = "1.2.0"
-description = "Replication package for 'Same Formula, Different Signal: Funding-Rate Censoring and Regime Dynamics in Decentralised Perpetual Futures'"
+version = "1.3.0"
+description = "Replication package for 'Same Formula, Different Signal: Funding-Rate Censoring and the Premium Gap between Hyperliquid and Centralised Perpetuals'"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Gregor Albiez", email = "gregor.albiez@students.fhnw.ch"}]
-keywords = ["funding rates", "perpetual futures", "censoring", "regime switching",
-            "hidden Markov models", "Hyperliquid", "Binance", "Bybit"]
+keywords = ["funding rates", "perpetual futures", "censoring", "premium index",
+            "regime switching", "hidden Markov models", "Hyperliquid", "Binance", "Bybit"]
 # Tested on CPython 3.9.6. Every module carries `from __future__ import
 # annotations`, so nothing in the package needs 3.10+.
 requires-python = ">=3.9"
@@ -23,7 +23,7 @@ Repository = "https://github.com/gelatotrade/HMM-Decentralised-Perpetual-Futures
 
 [project.optional-dependencies]
 fetch = ["requests>=2.31", "pyarrow>=15.0", "boto3>=1.34", "lz4>=4.3"]
-dev = ["pytest>=8.0", "ruff>=0.4"]
+dev = ["pytest>=8.0", "ruff>=0.4", "pyyaml>=6.0"]
 
 [build-system]
 requires = ["setuptools>=61"]

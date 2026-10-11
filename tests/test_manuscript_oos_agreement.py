@@ -1,14 +1,15 @@
-"""Pin the Section 5.3 figures the manuscript prints against the artifact.
+"""Pin the later-window and sensitivity fits of Section 6.1 against the artifact.
 
 The same guard as ``test_manuscript_bootstrap_agreement``, for the same reason:
-regenerating an artifact can move a printed interval without the prose
-following, so that the text contradicts a table shipped beside it. Section 5.3
-is more exposed than most, because its entire point is that these numbers move
-when the window moves.
+regenerating an artifact can move a printed number without the prose following,
+so that the text contradicts a table shipped beside it. Section 6.1 is more
+exposed than most, because its point is that these numbers move when the
+window moves.
 
-Every value below appears in the manuscript text, in the figures
-fig7_october_hour and fig8_rolling, or in the tables table8_rolling.tex and
-table9_sensitivity.tex.
+The values below are those the robust tables and figures draw on
+(table8b_rolling_robust.tex, table9b_sensitivity_robust.tex, fig7b and fig8b)
+and those the output-only linear-interval versions keep; the sentences of
+Section 6.1 that quote them are checked in test_manuscript_numbers.
 """
 import json
 import math
@@ -16,7 +17,7 @@ import pathlib
 
 import pytest
 
-from regime_engine.paths import DEFAULT_OUT, repo_root
+from regime_engine.paths import DEFAULT_OUT
 
 
 @pytest.fixture(scope="module")
@@ -30,11 +31,6 @@ def oos():
 @pytest.fixture(scope="module")
 def by_variant(oos):
     return {r["variant"]: r for r in oos["sensitivity"]}
-
-
-@pytest.fixture(scope="module")
-def tex():
-    return (repo_root() / "paper" / "paper.tex").read_text()
 
 
 def sd_ratio(rec):
@@ -92,7 +88,8 @@ class TestSingleObservationSensitivity:
         assert rec["significance"] == "ns"
 
     def test_it_is_the_stressed_half_life_that_moves(self, by_variant):
-        """Section 5.3: the calm half-life barely shifts, tau_stressed triples."""
+        """Section 6.1 (Figure 5, Tables C4, C5): the calm half-life barely shifts,
+        tau_stressed triples."""
         base = by_variant["baseline"]
         assert round(base["tau_stressed"], 2) == 3.18
         assert round(by_variant["replace_max"]["tau_stressed"], 2) == 11.15
@@ -140,62 +137,32 @@ class TestExtendedWindow:
         assert [round(v, 2) for v in rec["ci95"]] == [1.95, 7.15]
 
     def test_the_extended_interval_is_disjoint_from_the_post_april_one(self, oos):
-        """Why Section 5.3 reports these as distinct estimates rather than a range."""
+        """Why Section 6.1 (Figure 5, Tables C4, C5) reports these as distinct
+        estimates rather than a range."""
         ext, post = oos["extended_window"], oos["injection"][0]
         assert post["ci95"][1] < ext["ci95"][0]
 
 
-class TestProse:
-    """The sentences of Sections 1 and 5.3 that quote the later windows."""
+class TestUpperTail:
+    """What the winsorised variant caps, and where its robust significance comes from."""
 
-    def test_the_extended_window(self, oos, tex):
-        rec = oos["extended_window"]
-        lo, hi = rec["ci95"]
-        assert f"($T = {rec['T']:,}$)".replace(",", "{,}") in tex
-        assert f"at ${rec['ratio']:.2f}$, $[{lo:.2f}, {hi:.2f}]$" in tex
+    def test_the_cap_sets_fifty_hours_forty_one_of_them_in_october(self, oos):
+        t = oos["upper_tail"]
+        assert round(t["cap_bps"], 3) == 6.747
+        assert (t["n_capped"], t["n_capped_in_month"], t["n_capped_outside_month"]) == (50, 41, 9)
+        assert t["maximum_in_month"] and t["month"] == "2025-10"
 
-    def test_the_post_april_window(self, oos, tex):
-        rec = oos["injection"][0]
-        assert f"the ratio is ${rec['ratio']:.3f}$" in tex
-        assert f"ending at ${rec['ci95'][1]:.2f}$" in tex
-        assert (f"at ${rec['ratio']:.2f}$, its $95\\%$ interval ending at "
-                f"${rec['ci95'][1]:.2f}$") in tex
-        assert f"one observation in ${rec['T']:,}$".replace(",", "{,}") in tex
-        assert (f"${rec['tau_calm']:.1f}$ hours calm against "
-                f"${rec['tau_stressed']:.1f}$ stressed") in tex
-        # Section 6 quotes the stressed half-life of the same fit.
-        assert f"is ${rec['tau_stressed']:.0f}$ hours on the window after April 2026" in tex
+    def test_capping_october_alone_keeps_the_asymmetry_under_both_covariances(self, oos):
+        r = oos["upper_tail"]["october_tail_capped"]
+        w = {c: r["inference"][c]["ratio_wald"] for c in ("hessian", "robust")}
+        assert r["T"] == 5001 and round(r["ratio"], 2) == 3.93
+        assert [w[c]["significance"] for c in w] == ["above", "above"]
+        assert (round(w["hessian"]["p"], 4), round(w["robust"]["p"], 3)) == (0.0028, 0.036)
 
-    def test_the_injected_ratios(self, oos, tex):
-        base = oos["injection"][0]["ratio"]
-        a, b, c = (r["ratio"] for r in oos["injection"][1:])
-        assert f"raises it to ${a:.1f}$, ${b:.1f}$ and ${c:.1f}$" in tex
-        assert f"a factor of ${c / base:.0f}$ to ${a / base:.0f}$" in tex
-        lo, hi = oos["injection"][1]["ci95"]
-        assert f"$[{lo:.2f}, {hi:.2f}]$" in tex
-
-    def test_the_hours_no_rolling_window_reaches(self, oos, tex):
-        p = oos["protocol"]
-        covered = (len(oos["rolling"]) - 1) * p["step"] + p["window"]
-        tail = oos["premium_series"]["T"] - covered
-        assert f"the final ${tail}$ hours of the series fill no further window" in tex
-
-    def test_the_october_hour_against_the_next_largest(self, tex):
-        from regime_engine.panel import load_paper_window_premium
-        y = sorted(load_paper_window_premium(), reverse=True)
-        assert (round(y[0], 2), round(y[1], 2)) == (23.61, 9.52)
-        assert round(2 * y[0] / y[1]) / 2 == 2.5
-        assert "this one is two and a half times the next largest" in tex
-
-    def test_the_window_counts(self, oos, tex):
-        words = {1: "one", 9: "nine", 11: "eleven", 14: "fourteen"}
-        rolling = oos["rolling"]
-        n, rest = len(rolling), rolling[1:]
-        below = sum(r["ratio"] < 1 for r in rest)
-        excluding = sum(r["significance"] == "below" for r in rest)
-        above = sum(r["significance"] == "above" for r in rolling)
-        assert f"{words[n].capitalize()} overlapping windows of" in tex
-        assert (f"{words[below]} of the {words[n]} fall below one outright and "
-                f"{words[excluding]} of those exclude unity") in tex
-        assert (f"only {words[above]} of {words[n]} rolling windows lies significantly "
-                f"above unity") in tex
+    def test_from_11_october_the_winsorised_series_shows_no_asymmetry(self, oos):
+        r = oos["upper_tail"]["winsorised_from_11_oct"]
+        w = {c: r["inference"][c]["ratio_wald"] for c in ("hessian", "robust")}
+        assert r["T"] == oos["upper_tail"]["T_from"] == 4785
+        assert round(r["ratio"], 2) == 1.11
+        assert [w[c]["significance"] for c in w] == ["ns", "ns"]
+        assert (round(w["hessian"]["p"], 2), round(w["robust"]["p"], 2)) == (0.79, 0.87)

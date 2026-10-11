@@ -4,19 +4,25 @@ message: >-
   (see preferred-citation below). Cite the software itself only if you use the
   estimation code independently of the paper.
 
-title: "HMM-Decentralised-Perpetual-Futures: replication package for Same Formula, Different Signal"
+title: >-
+  HMM-Decentralised-Perpetual-Futures: replication package for Same Formula,
+  Different Signal: Funding-Rate Censoring and the Premium Gap between
+  Hyperliquid and Centralised Perpetuals
 abstract: >-
   Code, data and fitted parameters for a comparison of funding-rate censoring
-  on the Hyperliquid, Binance and Bybit BTC perpetuals, a Gaussian hidden Markov
-  model (K=3) on hourly Hyperliquid BTC perpetual log-returns and a
-  Markov-switching AR(1) on the funding premium, including the multi-start
-  protocol required to reach the maximum of the multi-modal MS-AR likelihood.
+  on the Hyperliquid, Binance and Bybit BTC and ETH perpetuals, from October
+  2025 to April 2026 and from December 2023 to September 2026; the
+  hour-by-hour premium gap between Hyperliquid and the exchanges, with its
+  Shapley decomposition; a two-state Markov-switching AR(1) on the premium
+  with Hessian, OPG and sandwich inference and the multi-start protocol its
+  multi-modal likelihood requires; and a three-state Gaussian hidden Markov
+  model on hourly returns, with the evidence on its boundary transition.
 type: software
 license: MIT
 repository-code: "https://github.com/gelatotrade/HMM-Decentralised-Perpetual-Futures"
 url: "https://github.com/gelatotrade/HMM-Decentralised-Perpetual-Futures"
-version: "1.2.0"
-date-released: "2026-10-08"
+version: "1.3.0"
+date-released: "2026-10-11"
 keywords:
   - regime switching
   - hidden Markov models
@@ -26,6 +32,7 @@ keywords:
   - cryptocurrency market microstructure
   - Hamilton filter
   - censoring
+  - premium index
   - Binance
   - Bybit
   - replication package
@@ -47,8 +54,37 @@ authors:
 preferred-citation:
   type: unpublished
   title: >-
-    Same Formula, Different Signal: Funding-Rate Censoring and Regime Dynamics
-    in Decentralised Perpetual Futures
+    Same Formula, Different Signal: Funding-Rate Censoring and the Premium
+    Gap between Hyperliquid and Centralised Perpetuals
+  abstract: >-
+    Hyperliquid, Binance and Bybit set perpetual funding by one rule: while
+    the averaged premium lies in a 10 bp band, funding equals an interest
+    rate of 0.01% per eight hours, and a settlement reveals the premium only
+    as that band. From 2 October 2025 to 28 April 2026, 46.0% of
+    Hyperliquid's hourly BTC settlements sit at that rate, against 5.9% on
+    Binance and 7.7% on Bybit. From 11 December 2023 to 30 September 2026
+    the shares are 55.2%, 23.8% and 27.3% for BTC and 52.0%, 23.1% and 28.3%
+    for ETH; taken together, the two quarters in which the exchanges'
+    premiums were positive reverse the ordering. Matched hour by hour with
+    the exchanges' own premium indices, Hyperliquid's BTC premium lies a
+    median 2.2 bps above both (ETH 1.7), in four hours out of five and in
+    every quarter. For BTC the gap persists but varies: 3.8 bps in 2024, 3.0
+    to 3.1 in 2025, 0.3 to 0.5 in 2026Q1 and 2026Q2 and 1.3 to 1.5 in
+    2026Q3. By a Shapley split it accounts for about all of the difference
+    in shares from 2024Q3 to 2025Q4, but for less than half in 2026Q1 and
+    2026Q2 (ETH: 55% to 70%), when all three median premiums lay below the
+    band and dispersion mattered more. Cross-venue comparisons of
+    positioning should therefore use premiums, with their constructions in
+    view, not headline rates. A two-state Markov-switching AR(1) on the
+    premium reverts faster under stress only around October 2025:
+    allowing for switching, the half-life ratio is 1.5, not significantly
+    different from one under a misspecification-robust covariance that one
+    hour of the 10 October crash dominates, and later data reverse it. A
+    three-state Gaussian hidden Markov model separates hourly volatility
+    into 14.6%, 33.3% and 88.4% annualised states and estimates the direct
+    move from the high to the low state at zero to three decimals, as do its
+    fits to simulated single-regime Student-t GARCH paths. All results are
+    descriptive.
   authors:
     - family-names: Albiez
       given-names: Gregor

@@ -1,7 +1,7 @@
 """Out-of-sample robustness: rolling windows and single-observation sensitivity.
 
-Two claims of Section 5.3 rest on this module, and both are easy to get wrong
-without any visible error:
+Two claims of Section 6.1 (Figure 5, Tables C4, C5) rest on this module, and
+both are easy to get wrong without any visible error:
 
 * The rolling estimates must be labelled by ``sigma2`` ascending, not by
   half-life. Sorting the half-lives instead makes every window look like the
@@ -19,6 +19,7 @@ from regime_engine.oos import (
     rolling_windows,
     sensitivity_variants,
     span_label,
+    upper_tail_variants,
     write_rolling_table,
     write_sensitivity_table,
 )
@@ -81,11 +82,53 @@ class TestSensitivityVariants:
         assert np.array_equal(y, before), "a variant edited the input in place"
 
 
+class TestUpperTailVariants:
+    """October 2025's upper tail against the rest of the upper 1%."""
+
+    @pytest.fixture
+    def series(self):
+        import pandas as pd
+        times = pd.date_range("2025-10-02 00:00", periods=24 * 60, freq="1h", tz="UTC")
+        y = np.random.default_rng(3).normal(0.0, 1.0, len(times))
+        y[24 * 8 + 22] = 30.0                     # the maximum, stamped 10 Oct 22:00
+        return y, times
+
+    def test_the_cap_is_the_winsorisation_cap_and_only_october_is_capped(self, series):
+        y, times = series
+        out, facts = upper_tail_variants(y, times)
+        cap = float(np.quantile(y, 0.99))
+        assert facts["cap_bps"] == cap
+        capped = out["october_tail_capped"]
+        changed = capped != y
+        assert changed.sum() == facts["n_capped_in_month"]
+        assert np.all(capped[changed] == cap)
+        accrual = np.asarray((times - np.timedelta64(1, "h")).strftime("%Y-%m"))
+        assert set(accrual[changed]) == {"2025-10"}
+        assert facts["n_capped_in_month"] + facts["n_capped_outside_month"] == (y > cap).sum()
+        assert facts["maximum_in_month"]
+
+    def test_the_later_series_is_the_winsorised_one_from_11_october(self, series):
+        y, times = series
+        out, facts = upper_tail_variants(y, times)
+        later = out["winsorised_from_11_oct"]
+        import pandas as pd
+        keep = np.asarray(times >= pd.Timestamp("2025-10-11 00:00", tz="UTC"))
+        assert facts["T_from"] == keep.sum() == later.size
+        assert np.array_equal(later, np.minimum(y, facts["cap_bps"])[keep])
+
+    def test_the_caller_s_array_is_left_alone(self, series):
+        y, times = series
+        before = y.copy()
+        upper_tail_variants(y, times)
+        assert np.array_equal(y, before)
+
+
 class TestRegimeLabelling:
     """calm is the lower-variance regime -- never the longer-lived one.
 
     Ordering by half-life would make the ratio exceed unity in every window by
-    construction, which is precisely the claim Section 5.3 puts under test.
+    construction, which is precisely the claim Section 6.1 (Figure 5, Tables C4,
+    C5) puts under test.
     """
 
     def test_calm_is_the_low_variance_regime_when_it_is_also_the_persistent_one(self):
@@ -150,9 +193,9 @@ class TestTableWriters:
     """The tables must be generated, never hand-edited.
 
     A hand-edited table keeps whatever regime order and values it was typed
-    with when the fit changes. These writers keep the Section 5.3 tables in
-    step with the artifact, which matters because their whole point is that
-    the numbers move between windows.
+    with when the fit changes. These writers keep the tables of Section 6.1
+    (Figure 5, Tables C4, C5) in step with the artifact, which matters because
+    their whole point is that the numbers move between windows.
     """
 
     @pytest.fixture
@@ -231,3 +274,9 @@ class TestTableTypesetting:
         body = write_sensitivity_table(payload, tmp_path).read_text()
         row = [line for line in body.splitlines() if "3.04" in line][0]
         assert len(row.split("&")[0].strip()) <= 32, row
+
+
+def test_the_linear_delta_tables_are_written_to_the_output_directory_only(tmp_path):
+    """table8_rolling and table9_sensitivity are kept as artifacts, not as manuscript copies."""
+    from regime_engine import oos
+    assert oos.legacy_table_dirs(tmp_path) == (tmp_path,)
