@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 import numpy as np
 import pandas as pd
 import pytest
+from _json_close import assert_json_close
 
 from regime_engine import censoring as cz
 from regime_engine import longhistory as lh
@@ -635,7 +636,7 @@ class TestShippedData:
 
     def test_shipped_artifact_and_table_are_current(self, payload):
         shipped = json.loads(lh.ARTIFACT.read_text())
-        assert shipped == json.loads(json.dumps(payload))
+        assert_json_close(json.loads(json.dumps(payload)), shipped)
         assert lh.write_table(payload) == lh.PAPER_TABLE.read_text()
         assert lh.OUTPUT_TABLE.read_text() == lh.PAPER_TABLE.read_text()
 

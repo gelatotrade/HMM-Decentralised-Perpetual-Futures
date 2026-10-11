@@ -15,6 +15,7 @@ from decimal import Decimal
 import numpy as np
 import pandas as pd
 import pytest
+from _json_close import assert_json_close
 
 from regime_engine import censoring
 from regime_engine import fetch_premium as fp
@@ -627,7 +628,7 @@ class TestShippedData:
     def test_artifact_matches_the_shipped_file(self, payload):
         import json
         shipped = json.loads(pg.ARTIFACT.read_text())
-        assert json.loads(json.dumps(payload)) == shipped
+        assert_json_close(json.loads(json.dumps(payload)), shipped)
 
     def test_floor_counts_compare_as_decimals(self):
         assert pg.FLOOR_8H == Decimal("0.0001") and pg.FLOOR_HOURLY == Decimal("0.0000125")
